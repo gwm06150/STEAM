@@ -10,8 +10,9 @@
 #define DISP_D4                9
 #define DISP_D5                10
 #define DISP_D6                11 
-#define DISP_D7                12 
+#define DISP_D7                12
 
-
+#define DISP_COLUMNS           16
+#define DISP_ROWS              2
 
 #endif//PINS_H

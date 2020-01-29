@@ -7,13 +7,21 @@ void setup()
   setup_comms(); 
 
   setup_display();
-  set_display_rgb(255,255,255);
-
-
+  set_display_rgb(0, 0, 0);
+  display_write("LY9000 V1.0",0 ,0);
 }
+
+float t = 0;
+bool one = false;
 
 void loop() 
 {
-  display_write("Hello", 0, 0);
-  display_write("World", 0, 1);
+  t += 1.0;
+
+  set_display_rgb(
+    255*abs(cos(t/60.0)),
+    255*abs(cos(t/60.0 + 1.4)),
+    255*abs(cos(t/60.0 + 2.3))
+    
+  );
 }
