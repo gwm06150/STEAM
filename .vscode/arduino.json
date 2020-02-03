@@ -1,0 +1,5 @@
+{
+    "board": "arduino:avr:uno",
+    "sketch": "tests\\test-solenoids\\test-solenoids.ino",
+    "port": "COM7"
+}
