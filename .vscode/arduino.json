@@ -1,0 +1,6 @@
+{
+    "programmer": "AVRISP mkII",
+    "board": "arduino:avr:uno",
+    "port": "COM7",
+    "sketch": "tests\\test-flow-control-subsys\\test-flow-control-subsys.ino"
+}
