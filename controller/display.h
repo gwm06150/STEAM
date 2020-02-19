@@ -14,4 +14,6 @@ void set_display_rgb(unsigned char r,
 // Coordinates start in the top left corner of the display
 void display_write(const char *text, int x, int y);
 
+void display_clear(void);
+
 #endif//DISPLAY_H

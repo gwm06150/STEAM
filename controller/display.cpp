@@ -28,6 +28,11 @@ bool setup_display(void)
   return true;
 }
 
+void display_clear(void) 
+{
+  lcdDisp.clear();
+}
+
 void set_display_rgb(unsigned char r, 
                      unsigned char g, 
                      unsigned char b)
