@@ -12,12 +12,12 @@ void setup()
   set_display_rgb(0, 0, 0);
   display_write("LY9000 V1.0",0 ,0);
 
-  delay(1000);
+  delay(5000);
   display_clear();
 }
 
 float t = 0;
-bool one = false;
+int lastReading = 0;
 
 void loop() 
 {
@@ -32,6 +32,11 @@ void loop()
 
   {
     int c = read_encoder_position();
+    if(c != lastReading) {
+      display_clear();
+      lastReading = c;
+    }
+
     char text[10] = "";
 
     itoa(c, text, 10);
