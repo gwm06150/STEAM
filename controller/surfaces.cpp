@@ -8,6 +8,8 @@ static          bool          lastButtonState = false;
 
 static void encoder_B_pulse(void);
 
+
+
 void setup_encoder(void)
 {
   pinMode(ENC_A, INPUT);
@@ -39,11 +41,12 @@ static void encoder_B_pulse(void)
   }
 }
 
+
+
 int read_encoder_position(void)
 {
   return encoderPosition; 
 }
-
 
 bool check_encoder_pushbutton(void)
 {
