@@ -4,6 +4,7 @@
 
 static volatile int           encoderPosition = 0;
 static volatile unsigned long nextPulse       = 0;
+static          bool          lastButtonState = false;
 
 static void encoder_B_pulse(void);
 
@@ -11,6 +12,7 @@ void setup_encoder(void)
 {
   pinMode(ENC_A, INPUT);
   pinMode(ENC_B, INPUT);
+  pinMode(ENC_PB, INPUT);
 
   attachInterrupt(digitalPinToInterrupt(ENC_B),
                   encoder_B_pulse,
@@ -40,4 +42,17 @@ static void encoder_B_pulse(void)
 int read_encoder_position(void)
 {
   return encoderPosition; 
+}
+
+
+bool check_encoder_pushbutton(void)
+{
+  bool curButtonState = digitalRead(ENC_PB);
+  
+  if(curButtonState != lastButtonState) {
+    lastButtonState = curButtonState;
+    return curButtonState == LOW; 
+  }
+
+  return false;
 }

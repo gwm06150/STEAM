@@ -18,4 +18,5 @@
 
 #define ENC_A                  3 // interrupt needed
 #define ENC_B                  2 // interrupt needed
+#define ENC_PB                 A0 
 #endif//PINS_H

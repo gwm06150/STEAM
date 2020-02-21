@@ -4,6 +4,10 @@
 #include "display.h"
 #include "pins.h"
 
+static unsigned char currentRed   = 0;
+static unsigned char currentBlue  = 0;
+static unsigned char currentGreen = 0;
+
 static LiquidCrystal lcdDisp(
   DISP_RS,
   DISP_ENABLE,
@@ -41,6 +45,29 @@ void set_display_rgb(unsigned char r,
   analogWrite(DISP_RGB_RED_CHANNEL, r);
   analogWrite(DISP_RGB_GREEN_CHANNEL, g);
   analogWrite(DISP_RGB_BLUE_CHANNEL, b);
+
+  currentRed = r;
+  currentGreen = g;
+  currentBlue = b;
+}
+
+
+void lerp_display_rgb(unsigned char r,
+                      unsigned char g,
+                      unsigned char b,
+                      unsigned int divisor)
+{
+  unsigned char nR, nG, nB;
+
+  nR = currentRed;
+  nG = currentGreen;
+  nB = currentBlue;
+
+  nR += (r-currentRed)/divisor; 
+  nG += (g-currentGreen)/divisor;
+  nB += (b-currentBlue)/divisor;
+
+  set_display_rgb(nR, nG, nB);
 }
 
 void display_write(const char *text, int x, int y)

@@ -10,6 +10,11 @@ void set_display_rgb(unsigned char r,
                      unsigned char g, 
                      unsigned char b);
 
+void lerp_display_rgb(unsigned char r,
+                      unsigned char g,
+                      unsigned char b,
+                      unsigned int divisor);
+
 // Writes 'text' to the display, at position (x, y)
 // Coordinates start in the top left corner of the display
 void display_write(const char *text, int x, int y);
