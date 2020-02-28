@@ -1,6 +1,6 @@
 {
     "programmer": "AVRISP mkII",
     "board": "arduino:avr:uno",
-    "port": "COM6",
-    "sketch": "controller\\controller.ino"
+    "port": "/dev/ttyACM0",
+    "sketch": "controller/controller.ino"
 }
