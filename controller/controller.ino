@@ -3,9 +3,17 @@
 #include "communication.h"
 #include "menus.h"
 
-static unsigned int menuState = MENU_UNINITIALIZED;
+#define MAX_RPMS 100
 
-bool flagDebugCode = false;
+static unsigned int menuState = MENU_UNINITIALIZED;
+static unsigned int nextMenuState = MENU_UNINITIALIZED;
+
+// speed control state variables 
+#define SPEED_STOPPED 0
+#define SPEED_FORWARD 1
+#define SPEED_REVERSE 2
+static unsigned char speedMode = SPEED_STOPPED;
+static unsigned char speedSetting = 0;
 
 void setup()
 {
@@ -18,7 +26,7 @@ void setup()
 
   setup_display();
 
-  set_display_rgb(0, 0, 0);
+  set_display_rgb(40, 40, 40);
   display_write("LY9000 V1.0",0 ,0);
 
   // for 5 seconds, accept any combinations
@@ -28,15 +36,20 @@ void setup()
     unsigned char buttons = check_aux_buttons();
 
     if(buttons == 7) {
-      if(flagDebugCode == false) {
+      if(menuState == MENU_UNINITIALIZED) {
         display_write("ENTERING DEBUG", 0, 1);
+        nextMenuState = MENU_DEBUG;
       }
-      flagDebugCode = true;
-      
     }
 
   }
   
+  // if no special boot buttons were pressed, 
+  // go into select mode by default
+  if(nextMenuState == MENU_UNINITIALIZED) {
+    nextMenuState = MENU_SELECT_MODE;
+  }
+
   display_clear();
 }
 
@@ -48,70 +61,269 @@ void loop()
   unsigned long now = millis();
   unsigned char buttons = 0;
 
+  // manages state changing and state entry
+  if(nextMenuState != menuState) {
+    menuState = nextMenuState;
+
+    switch(menuState) {
+    case MENU_SELECT_MODE:
+      display_clear();
+      display_write("  SELECT  MODE  ", 0, 0);
+      display_write(" VVT        VFC ", 0, 1);
+      set_display_rgb(24,24,24);
+      break;
+    case MENU_SETSPEED_VVT:
+      display_clear();
+      display_write("Cur:    RPM VVT", 0, 0);
+      display_write("Set:    RPM", 0, 1);
+      
+
+
+      switch(speedMode) {
+      case SPEED_FORWARD: 
+        set_display_rgb(0,255,0);
+        display_write("FWD", 12, 1);
+        break;
+      case SPEED_REVERSE:
+
+        set_display_rgb(0,255,0);
+        display_write("REV", 12, 1);
+        break;
+      case SPEED_STOPPED: 
+
+        set_display_rgb(255,0,0);
+        display_write("STP", 12, 1);
+        break;
+      }
+
+      {
+        char speed[4] = "";
+        
+        itoa(speedSetting, speed, 10);
+        display_write("   ", 5, 1);
+        display_write(speed, 5, 1);
+      }
+
+      break;
+    case MENU_SETSPEED_VFC: 
+      display_clear();
+      display_write("Cur:    RPM VFC", 0, 0);
+      display_write("Set:    RPM", 0, 1);
+
+      switch(speedMode) {
+      case SPEED_FORWARD: 
+        set_display_rgb(0,255,0);
+        display_write("FWD", 12, 1);
+        break;
+      case SPEED_REVERSE:
+
+        set_display_rgb(0,255,0);
+        display_write("REV", 12, 1);
+        break;
+      case SPEED_STOPPED: 
+
+        set_display_rgb(255,0,0);
+        display_write("STP", 12, 1);
+        break;
+      }
+
+      {
+        char speed[4] = "";
+        
+        itoa(speedSetting, speed, 10);
+        display_write("   ", 5, 1);
+        display_write(speed, 5, 1);
+      }
+
+      break;
+    }
+  }
+
   if(now > nextTick) {
     nextTick = now + 10;
 
-    if(flagDebugCode) switch(testColor) {
-      case 0:
-        set_display_rgb(255*abs(cos(now/2000.0)), 0, 0);
+    switch(menuState) {
+      case MENU_DEBUG:
+        switch(testColor) {
+        case 0:
+          set_display_rgb(255*abs(cos(now/2000.0)), 0, 0);
+          break;
+        case 1:
+          set_display_rgb(0, 255*abs(cos(now/2000.0)), 0);
+          break;
+        case 2:
+          set_display_rgb(0, 0, 255*abs(cos(now/2000.0)));
+          break;
+        }
         break;
-      case 1:
-        set_display_rgb(0, 255*abs(cos(now/2000.0)), 0);
+
+      case MENU_SETSPEED_VFC:
+      case MENU_SETSPEED_VVT: 
+        
         break;
-      case 2:
-        set_display_rgb(0, 0, 255*abs(cos(now/2000.0)));
+
+      default:
         break;
     }
   }
 
   // check if the encoder has been pressed 
   if(check_encoder_pushbutton()) {
-    if(flagDebugCode) {
+    switch(menuState){ 
+    case MENU_DEBUG:
       display_clear();
       display_write("Knob pressed.", 0, 0);
 
       testColor++;
       if(testColor == 3) testColor = 0;
+      break;
+    default:
+      break;
+    }
+  }
+
+  // check if encoder has stepped 
+  if(check_encoder_moved()) {
+    switch(menuState) {
+    case MENU_SETSPEED_VFC:
+    case MENU_SETSPEED_VVT:
+      if(encoder_going_cw()) {
+        
+        if(speedSetting+1 > MAX_RPMS)
+          speedSetting = MAX_RPMS;
+        else 
+          speedSetting++;
+      } else {
+        if(speedSetting-1 < 0) 
+          speedSetting = 0;
+        else
+          speedSetting--;
+      }
+
+      {
+        char speed[4] = "";
+        
+        itoa(speedSetting, speed, 10);
+        display_write("   ", 5, 1);
+        display_write(speed, 5, 1);
+      }
+
+      break;
     }
   }
 
   // check if any of the auxiliary buttons have been pressed
   if((buttons = check_aux_buttons()) != 0) {
-    display_clear();
     
-    if(flagDebugCode) {
+    switch(menuState) {
+    case MENU_DEBUG:
+      display_clear();
       display_write("Button Pressed", 0, 0);
-
-      if(buttons & INPUT_AUX1) {
+      break;
+    }
+ 
+    if(buttons & INPUT_AUX1) {
+      switch(menuState) {
+      case MENU_DEBUG:
         display_write("1", 0, 1);
-      }
+        break;
 
-      if(buttons & INPUT_AUX2) {
+      case MENU_SELECT_MODE: 
+        nextMenuState = MENU_SETSPEED_VVT;
+        break;
 
-        display_write("2", 2, 1);
-      }
+      case MENU_SETSPEED_VFC: 
+      case MENU_SETSPEED_VVT: 
+        if(speedMode == SPEED_FORWARD)
+          speedMode = SPEED_STOPPED;
+        else 
+          speedMode = SPEED_REVERSE;
 
-      if(buttons & INPUT_AUX3) {
-        display_write("3", 4, 1);
+          
+        break;
       }
+    }
+    
+    if(buttons & INPUT_AUX2) {
+      switch(menuState) {
+      case MENU_DEBUG:
+        display_write("2", 1, 1);
+        break;
+      case MENU_SETSPEED_VFC:
+      case MENU_SETSPEED_VVT:
+        if(speedMode == SPEED_STOPPED)
+          nextMenuState = MENU_SELECT_MODE;
+        else 
+          speedMode = SPEED_STOPPED; 
+
+        break;
+      }
+    }
+    
+    if(buttons & INPUT_AUX3) {
+      switch(menuState) {
+      case MENU_DEBUG:
+        display_write("3", 2, 1);
+        set_display_rgb(0,0,0);
+        break;
+
+      case MENU_SELECT_MODE: 
+        nextMenuState = MENU_SETSPEED_VFC;
+        break;
+      
+      case MENU_SETSPEED_VFC: 
+      case MENU_SETSPEED_VVT: 
+        if(speedMode == SPEED_REVERSE)
+          speedMode = SPEED_STOPPED;
+        else 
+          speedMode = SPEED_FORWARD;
+        break;
+      }
+    }
+
+    switch(menuState) {
+      case MENU_SETSPEED_VFC: 
+      case MENU_SETSPEED_VVT: 
+        switch(speedMode) {
+        case SPEED_FORWARD: 
+          set_display_rgb(0,255,0);
+          display_write("FWD", 12, 1);
+          break;
+        case SPEED_REVERSE:
+
+          set_display_rgb(0,255,0);
+          display_write("REV", 12, 1);
+          break;
+        case SPEED_STOPPED: 
+
+          set_display_rgb(255,0,0);
+          display_write("STP", 12, 1);
+          break;
+        }
+        break; 
     }
   }
 
-  if(flagDebugCode){
-    char num[5] = "";
-    int  value = read_encoder_position();
-    int i = 0;
+  switch(menuState) {
+  case MENU_DEBUG: {
+      char num[5] = "";
+      int  value = read_encoder_position();
+      int i = 0;
 
-    itoa(value, num, 10);
+      itoa(value, num, 10);
 
-    for(i = 0; i < 4; i++) {
-      if(!isdigit(num[i]) && num[i] != '-'){
-        num[i] = ' ';
+      for(i = 0; i < 4; i++) {
+        if(!isdigit(num[i]) && num[i] != '-'){
+          num[i] = ' ';
+        }
       }
+
+      num[4] = 0;
+
+      display_write(num, 8, 1);
     }
-
-    num[4] = 0;
-
-    display_write(num, 8, 1);
+    break;
   }
+
 }
+

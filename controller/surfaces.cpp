@@ -2,11 +2,15 @@
 #include "surfaces.h"
 #include "pins.h"
 
+#define PULSE_TIMEOUT 80
+
 
 // Encoder related state 
 static volatile int           encoderPosition = 0;
 static volatile unsigned long nextPulse       = 0;
 static          bool          lastPB          = false;
+static          bool          wasGoingCW      = false;
+static          bool          pulseHappened   = false;
 // Auxiliary button related state 
 static          unsigned char lastButtons     = 0;
 
@@ -56,12 +60,17 @@ static void encoder_B_pulse(void)
   // there has been sufficient time since
   // the last 
   if(now > nextPulse) {
-    nextPulse = now + 50;
+    nextPulse = now + PULSE_TIMEOUT;
+
+    pulseHappened = true;
 
     if(digitalRead(ENC_A) == HIGH) {
-      encoderPosition++;
-    } else {
+      
       encoderPosition--;
+      wasGoingCW = false;
+    } else {
+      encoderPosition++;
+      wasGoingCW = true;
     } 
   }
 }
@@ -86,6 +95,23 @@ bool check_encoder_pushbutton(void)
 }
 
 
+bool encoder_going_cw(void)
+{
+  return wasGoingCW;
+}
+
+bool check_encoder_moved(void)
+{
+  // consume the pulse and return true
+  if(pulseHappened) {
+    pulseHappened = false; 
+    return true;
+  }
+
+  return false;
+}
+
+
 
 unsigned char check_aux_buttons(void)
 {
@@ -101,7 +127,8 @@ unsigned char check_aux_buttons(void)
   if(newMask != lastButtons) {
     // update the current button state in memory
     lastButtons = newMask; 
+    return newMask;
   }
 
-  return lastButtons; 
+  return 0;
 }

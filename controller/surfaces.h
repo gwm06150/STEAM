@@ -3,8 +3,8 @@
 
 
 // Values for input bitmask (check_aux_buttons)
-#define INPUT_AUX1         1 // auxiliary button 1 (left tilt switch)
-#define INPUT_AUX2         2 // auxiliary button 2 (middle tilt switch)
+#define INPUT_AUX1         0b001 // auxiliary button 1 (left tilt switch)
+#define INPUT_AUX2         0b010 // auxiliary button 2 (middle tilt switch)
 #define INPUT_AUX3         4 // auxiliary button 3 (right tilt switch)
 
 
@@ -17,6 +17,14 @@ void setup_buttons(void);
 // Reads the encoders position based on A/B quadrature.
 // returns: absolute position of encoder 
 int read_encoder_position(void);
+
+// Fetches the last direction the knob was turned in.
+// returns: true if cw
+bool encoder_going_cw(void);
+
+// Checks if the encoder recently changed position. 
+// returns: true if a pulse occured
+bool check_encoder_moved(void);
 
 // Polls the encoder to see if the push button has been pressed.
 // returns: truth value of whether or not the button is pressed 
