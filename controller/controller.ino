@@ -206,6 +206,8 @@ void loop()
         display_write(speed, 5, 1);
       }
 
+      send_speed_cmd(speedSetting);
+
       break;
     }
   }
