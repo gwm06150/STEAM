@@ -81,17 +81,12 @@ void loop()
 
       switch(speedMode) {
       case SPEED_FORWARD: 
-        set_display_rgb(0,255,0);
         display_write("FWD", 12, 1);
         break;
       case SPEED_REVERSE:
-
-        set_display_rgb(0,255,0);
         display_write("REV", 12, 1);
         break;
       case SPEED_STOPPED: 
-
-        set_display_rgb(255,0,0);
         display_write("STP", 12, 1);
         break;
       }
@@ -112,17 +107,12 @@ void loop()
 
       switch(speedMode) {
       case SPEED_FORWARD: 
-        set_display_rgb(0,255,0);
         display_write("FWD", 12, 1);
         break;
       case SPEED_REVERSE:
-
-        set_display_rgb(0,255,0);
         display_write("REV", 12, 1);
         break;
       case SPEED_STOPPED: 
-
-        set_display_rgb(255,0,0);
         display_write("STP", 12, 1);
         break;
       }
@@ -159,7 +149,15 @@ void loop()
 
       case MENU_SETSPEED_VFC:
       case MENU_SETSPEED_VVT: 
-        
+        switch(speedMode) {
+        case SPEED_FORWARD:
+        case SPEED_REVERSE: 
+          smooth_display_rgb(0,255,0,15);
+          break;
+        case SPEED_STOPPED: 
+          smooth_display_rgb(255,0,0,15);
+          break;
+        }
         break;
 
       default:
@@ -189,15 +187,15 @@ void loop()
     case MENU_SETSPEED_VVT:
       if(encoder_going_cw()) {
         
-        if(speedSetting+1 > MAX_RPMS)
+        if(speedSetting+5 > MAX_RPMS)
           speedSetting = MAX_RPMS;
         else 
-          speedSetting++;
+          speedSetting+=5;
       } else {
-        if(speedSetting-1 < 0) 
+        if(speedSetting-5 < 0) 
           speedSetting = 0;
         else
-          speedSetting--;
+          speedSetting-=5;
       }
 
       {
@@ -286,17 +284,12 @@ void loop()
       case MENU_SETSPEED_VVT: 
         switch(speedMode) {
         case SPEED_FORWARD: 
-          set_display_rgb(0,255,0);
           display_write("FWD", 12, 1);
           break;
         case SPEED_REVERSE:
-
-          set_display_rgb(0,255,0);
           display_write("REV", 12, 1);
           break;
         case SPEED_STOPPED: 
-
-          set_display_rgb(255,0,0);
           display_write("STP", 12, 1);
           break;
         }

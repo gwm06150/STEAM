@@ -52,22 +52,36 @@ void set_display_rgb(unsigned char r,
 }
 
 
-void lerp_display_rgb(unsigned char r,
-                      unsigned char g,
-                      unsigned char b,
-                      unsigned int divisor)
+static unsigned char approach(int cur, int targ, int step)
 {
-  unsigned char nR, nG, nB;
+  if(targ > cur) {
+    cur += step;
+    if(cur >= targ)
+      cur = targ; 
+  }
+  if(targ < cur) {
+    cur -= step; 
+    if(cur <= targ) 
+      cur = targ;
+  }
 
-  nR = currentRed;
-  nG = currentGreen;
-  nB = currentBlue;
+  return cur;
+}
 
-  nR += (r-currentRed)/divisor; 
-  nG += (g-currentGreen)/divisor;
-  nB += (b-currentBlue)/divisor;
+void smooth_display_rgb(unsigned char r,
+                        unsigned char g,
+                        unsigned char b,
+                        unsigned int step)
+{
+  unsigned char nr = currentRed, 
+                ng = currentGreen, 
+                nb = currentBlue; 
 
-  set_display_rgb(nR, nG, nB);
+  nr = approach(nr, r, step);
+  ng = approach(ng, g, step);
+  nb = approach(nb, b, step);
+
+  set_display_rgb(nr,ng,nb);
 }
 
 void display_write(const char *text, int x, int y)

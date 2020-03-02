@@ -10,19 +10,19 @@
 bool setup_display(void);
 
 // Sets the backlight RGB
-// r, g, b,: 0-255 for each channel, where 255 is maximum
+// r, g, b: 0-255 for each color channel, where 255 is maximum
 void set_display_rgb(unsigned char r, 
                      unsigned char g, 
                      unsigned char b);
 
 // Interpolates the displays current RGB to a new RGB value.
 // r, g, b: 0-255 for each channel, 255 is maximum 
-// divisor: adjusts interpolation. higher divisor results 
-// in finer steps.
-void lerp_display_rgb(unsigned char r,
-                      unsigned char g,
-                      unsigned char b,
-                      unsigned int divisor);
+// step: amount to step each channel by
+// must be called multiple times (i.e during tick) to work
+void smooth_display_rgb(unsigned char r,
+                        unsigned char g,
+                        unsigned char b,
+                        unsigned int step);
 
 
 // Writes text to the display as a position 
