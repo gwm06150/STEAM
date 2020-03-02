@@ -54,17 +54,24 @@ void set_display_rgb(unsigned char r,
 
 static unsigned char approach(int cur, int targ, int step)
 {
+  // if the value is below the target
   if(targ > cur) {
+    // increment in the targets direction 
     cur += step;
+    // if we overshoot the target, clamp
     if(cur >= targ)
       cur = targ; 
   }
+  // if the value is above the target 
   if(targ < cur) {
+    // decrement in the targets direction
     cur -= step; 
+    // if we overshoot the target, clamp
     if(cur <= targ) 
       cur = targ;
   }
 
+  // return adjusted value
   return cur;
 }
 

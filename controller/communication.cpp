@@ -10,9 +10,11 @@ bool setup_comms(void)
 
 void send_speed_cmd(unsigned char speed)
 {
+  // create string containing speed number
   char num[4] = "";
   itoa(speed, num, 10);
 
+  // send command in the format "S<speed>\n"
   Serial.print("S");
   Serial.print(num);
   Serial.print("\n");
@@ -20,6 +22,7 @@ void send_speed_cmd(unsigned char speed)
 
 void send_speed_mode(unsigned char mode)
 {
+  // depending on the speed mode, send a lowercase f, r, or s.
   switch(mode) {
   case SPEED_FORWARD: 
     Serial.print("f\n");
