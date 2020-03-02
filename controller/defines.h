@@ -14,4 +14,8 @@
 
 #define MENU_WIZARDMODE    64
 
+#define SPEED_STOPPED 0
+#define SPEED_FORWARD 1
+#define SPEED_REVERSE 2
+
 #endif//MENUS_H

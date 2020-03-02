@@ -1,7 +1,7 @@
 #include "display.h"
 #include "surfaces.h"
 #include "communication.h"
-#include "menus.h"
+#include "defines.h"
 
 #define MAX_RPMS 100
 
@@ -9,9 +9,6 @@ static unsigned int menuState = MENU_UNINITIALIZED;
 static unsigned int nextMenuState = MENU_UNINITIALIZED;
 
 // speed control state variables 
-#define SPEED_STOPPED 0
-#define SPEED_FORWARD 1
-#define SPEED_REVERSE 2
 static unsigned char speedMode = SPEED_STOPPED;
 static unsigned char speedSetting = 0;
 
@@ -295,6 +292,9 @@ void loop()
           display_write("STP", 12, 1);
           break;
         }
+
+        send_speed_mode(speedMode);
+        
         break; 
     }
   }
