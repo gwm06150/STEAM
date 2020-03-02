@@ -3,7 +3,6 @@
 // Test Code for the flow controller subsystem
 
 // Included Libraries
-#include stdlib.h
 
 // Define Pins
 #define PIN_DIR 4 // set pin high to close valve
@@ -18,17 +17,24 @@
 
 // Define Values
 #define pulseWidth 1 // set in milliseconds
+#define valveSwitchTime 2000 // set in milliseconds
 
 // Global variables
-int engineState = SELF_TEST;
+unsigned long timeNow = 0; // this should take several days before running over
+int engineState = LISTEN;
 int period = 500;
 int pulseTimer = 0;
 int valveStepCount = 0;
 int pulseState = 0;
+int solenoidState = 0;
+int solenoidTimer = 0;
+int valvePositionSet = 0;
+int valvePositionActual = 0;
+int solenoidDirction = 0;
 
-unsigned long timeNow = 0; // this should take several days before running over
-
-
+// Function Prototypes
+void stepFlowValveOpen();
+void stepFlowValveClosed();
 
 void setup() {
   pinMode(PIN_DIR, OUTPUT);
@@ -37,10 +43,24 @@ void setup() {
   pinMode(SOL_2, OUTPUT);
 }
 
-
-
 void loop() {
   // Read input from serial and set valves as needed
+
+  // S<number>\n 
+  // r\n
+  // f\n 
+  // s\n 
+
+  while(Serial.available() > 0) {
+    char c = Serial.read();
+
+    switch(c) {
+    case 'r': solenoidDirction = 3; break; 
+    case 'f': solenoidDirction = 2; break; 
+    case 's': solenoidDirction = 1; break;
+    default: break;
+    }
+  }
 
   // Update Time at start of Loop
   timeNow = millis();
@@ -52,15 +72,6 @@ void loop() {
 
     // If self test passes move to error state
 
-    // FOR DEMONSTRATION
-    if (serial.Read('1')){
-      engineState = LISTEN;
-      // if user prompts self test pass, move to listen
-    }
-    if (serial.Read('2')){
-      engineState = ERROR;
-      // if user prompts error, move to error state
-    }
   } // END OF SELF TEST STATE
 
   // START OF ERROR STATE__________________________________________________________________________________________________________
@@ -70,19 +81,45 @@ void loop() {
 
     // else, just wait
 
-    // FOR DEMONSTRATION
-    if (serial.Read('3')){
-      engineState = SELF_TEST;
-      // if the user provides all clear return to self test
-    }
   } // END OF ERROR STATE
 
   //START OF LISTEN STATE__________________________________________________________________________________________________________
   if (engineState == LISTEN){
-    // Update Position of flow controller
-    // get input angle, convert to steps, call steps until matched
+    
+    // change the solenoid valves as programmed
+    if(solenoidDirction == 1){
+      // Stop valve timing
+      digitalWrite(SOL_1, LOW);
+      digitalWrite(SOL_2, LOW);
 
-    // Update cycle speed of valves
+    }
+    else if(solenoidDirction == 2){
+      // Start in forward condition
+      solenoidValveTiming();
+
+    }
+    else if(solenoidDirction == 3){
+      // Start in reverse condition
+      solenoidValveTiming();
+
+    }
+    
+    
+    
+    solenoidValveTiming();
+
+    // 
+    if(valvePositionSet < valveStepCount){
+      // Open the valve to the set point
+      stepFlowValveOpen();
+    }
+    else if(valvePositionSet > valveStepCount){
+      // Close the valve to the set point
+      stepFlowValveClosed();
+    }
+    else if(valvePositionSet == valveStepCount){
+      // Do nothing
+    }
 
   } // END OF LISTEN STATE
 } // end of loop
@@ -92,7 +129,7 @@ void stepFlowValveClosed(){
   // millis() used to control the width of the pulse
   // a min pulse width for the controller must be maintained in order for it to step properly
 
-  if(pulseState = 0){
+  if(pulseState == 0){
     // set the direction pin
     digitalWrite(PIN_DIR, HIGH); // CLOSE VALVE
     
@@ -100,15 +137,15 @@ void stepFlowValveClosed(){
     digitalWrite(PIN_STEP, HIGH);
     
     // log the start time of the pulse
-    pulseTimer = millis();
+    pulseTimer = timeNow;
 
     // update the pulse state
     pulseState = 1;
   }
 
-  if(pulseState = 1){
+  if(pulseState == 1){
     // check that the pulse has started
-    if((millis() - pulseTimer) > pulseWidth){
+    if((timeNow - pulseTimer) >= pulseWidth){
       // check that the pulse has gone on long enough
       
       // bring the pusle pin low
@@ -127,7 +164,7 @@ void stepFlowValveOpen(){
   // millis() used to control the width of the pulse
   // a min pulse width for the controller must be maintained in order for it to step properly
 
-  if(pulseState = 0){
+  if(pulseState == 0){
     // set the direction pin
     digitalWrite(PIN_DIR, LOW); // OPEN VALVE
     
@@ -135,15 +172,15 @@ void stepFlowValveOpen(){
     digitalWrite(PIN_STEP, HIGH);
     
     // log the start time of the pulse
-    pulseTimer = millis();
+    pulseTimer = timeNow;
 
     // update the pulse state
     pulseState = 1;
   }
 
-  if(pulseState = 1){
+  if(pulseState == 1){
     // check that the pulse has started
-    if((millis() - pulseTimer) > pulseWidth){
+    if((timeNow - pulseTimer) >= pulseWidth){
       // check that the pulse has gone on long enough
       
       // bring the pusle pin low
@@ -158,12 +195,27 @@ void stepFlowValveOpen(){
 } // END OF FLOW VALVE OPEN
 
 void solenoidValveTiming(){
-  // based on the angle input from the encoder determine the angle of the valve
-  
-  // for sub system demo valve cycling will be based on time using millis() not angle
-  // Set the first valve to open, once enough time has elapsed close first valve
+  if(solenoidState == 0 && ((timeNow - solenoidTimer) >= valveSwitchTime)){
+    // start by firing solenoid 1
+    digitalWrite(SOL_1, HIGH);
+    digitalWrite(SOL_2, LOW);
 
-  // Once the first valve is closed open the second valve, close when set time has elapsed
+    // update the solenoid timer
+    solenoidTimer = timeNow;
 
-  // continue to loop this and update the delay between the valve swapping in the serial read area
+    // update the solenoid state
+    solenoidState = 1;
+  }
+
+    if(solenoidState == 1 && ((timeNow - solenoidTimer) >= valveSwitchTime)){
+    // start by firing solenoid 1
+    digitalWrite(SOL_1, LOW);
+    digitalWrite(SOL_2, HIGH);
+
+    // update the solenoid timer
+    solenoidTimer = timeNow;
+
+    // update the solenoid state
+    solenoidState = 0;
+  }
 }
