@@ -37,13 +37,30 @@ void stepFlowValveOpen();
 void stepFlowValveClosed();
 
 void setup() {
+  Serial.begin(9600);
+
+
+
+
+
+
+
+
+
+
+
   pinMode(PIN_DIR, OUTPUT);
   pinMode(PIN_STEP, OUTPUT);
   pinMode(SOL_1, OUTPUT);
   pinMode(SOL_2, OUTPUT);
+
+  pinMode(LED_BUILTIN, OUTPUT);
 }
 
 void loop() {
+  // Update Time at start of Loop
+  timeNow = millis();
+
   // Read input from serial and set valves as needed
 
   // S<number>\n 
@@ -52,7 +69,7 @@ void loop() {
   // s\n 
 
   while(Serial.available() > 0) {
-    char c = Serial.read();
+    int c = Serial.read();
 
     switch(c) {
     case 'r': solenoidDirction = 3; break; 
@@ -60,10 +77,8 @@ void loop() {
     case 's': solenoidDirction = 1; break;
     default: break;
     }
-  }
+  } 
 
-  // Update Time at start of Loop
-  timeNow = millis();
 
   // START OF SELF TEST STATE__________________________________________________________________________________________________________
   if (engineState == SELF_TEST){
@@ -103,23 +118,19 @@ void loop() {
       solenoidValveTiming();
 
     }
-    
-    
-    
-    solenoidValveTiming();
 
-    // 
-    if(valvePositionSet < valveStepCount){
-      // Open the valve to the set point
-      stepFlowValveOpen();
-    }
-    else if(valvePositionSet > valveStepCount){
-      // Close the valve to the set point
-      stepFlowValveClosed();
-    }
-    else if(valvePositionSet == valveStepCount){
-      // Do nothing
-    }
+    
+    // if(valvePositionSet < valveStepCount){
+    //   // Open the valve to the set point
+    //   stepFlowValveOpen();
+    // }
+    // else if(valvePositionSet > valveStepCount){
+    //   // Close the valve to the set point
+    //   stepFlowValveClosed();
+    // }
+    // else if(valvePositionSet == valveStepCount){
+    //   // Do nothing
+    // }
 
   } // END OF LISTEN STATE
 } // end of loop
@@ -207,7 +218,7 @@ void solenoidValveTiming(){
     solenoidState = 1;
   }
 
-    if(solenoidState == 1 && ((timeNow - solenoidTimer) >= valveSwitchTime)){
+  if(solenoidState == 1 && ((timeNow - solenoidTimer) >= valveSwitchTime)){
     // start by firing solenoid 1
     digitalWrite(SOL_1, LOW);
     digitalWrite(SOL_2, HIGH);

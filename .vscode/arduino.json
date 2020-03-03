@@ -1,5 +1,5 @@
 {
-    "programmer": "AVR ISP",
+    "programmer": "AVRISP mkII",
     "board": "arduino:avr:uno",
     "port": "COM10",
     "sketch": "tests\\test-flow-control-subsys\\test-flow-control-subsys.ino"
