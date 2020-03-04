@@ -87,8 +87,13 @@ void loop() {
           int conversion = -1;
           conversion = atoi(serialBuffer+1); // get the speed value from the controller
           if(conversion != -1) {
+            char buffer[10] = "";
+
+            sprintf(buffer, "OK%d\n", conversion);
+
             valvePositionSet = 10 * conversion; 
-            Serial.print("OK\n");
+            Serial.print(buffer);
+
           } else {
             Serial.print("NG\n");
           }
