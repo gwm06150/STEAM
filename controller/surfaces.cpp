@@ -49,6 +49,7 @@ void setup_buttons(void)
 
 
 
+
 // Interrupt triggered by rising edge on encoder B 
 // channel.
 static void encoder_B_pulse(void)
