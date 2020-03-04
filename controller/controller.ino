@@ -3,6 +3,8 @@
 #include "communication.h"
 #include "defines.h"
 
+#include <string.h>
+
 #define MAX_RPMS 100
 
 static unsigned int menuState = MENU_UNINITIALIZED;
@@ -11,6 +13,9 @@ static unsigned int nextMenuState = MENU_UNINITIALIZED;
 // speed control state variables 
 static unsigned char speedMode = SPEED_STOPPED;
 static unsigned char speedSetting = 0;
+
+static char serialBuffer[50];
+static unsigned int serialIndex = 0;
 
 void setup()
 {
@@ -57,6 +62,27 @@ void loop()
 {
   unsigned long now = millis();
   unsigned char buttons = 0;
+
+  // manages serial 
+  if(Serial.available() > 0){
+    char c = Serial.read();
+
+    if(c != '\n') {
+      serialBuffer[serialIndex] = c;
+      serialIndex++;
+    } else {
+      if(serialBuffer[0] == 'O' && serialBuffer[1] == 'K') {
+        set_display_rgb(255,255,255);
+        delay(50);
+      } else if(serialBuffer[0] == 'N' && serialBuffer[1] == 'G') {
+        set_display_rgb(255,255,0);
+        delay(50);
+      }
+
+      serialIndex = 0;
+      memset(serialBuffer, 0, sizeof(char)*50);
+    }
+  }
 
   // manages state changing and state entry
   if(nextMenuState != menuState) {
@@ -172,6 +198,11 @@ void loop()
       testColor++;
       if(testColor == 3) testColor = 0;
       break;
+    case MENU_SETSPEED_VFC: 
+    case MENU_SETSPEED_VVT: 
+
+      send_speed_cmd(speedSetting);
+
     default:
       break;
     }
@@ -202,8 +233,6 @@ void loop()
         display_write("   ", 5, 1);
         display_write(speed, 5, 1);
       }
-
-      send_speed_cmd(speedSetting);
 
       break;
     }

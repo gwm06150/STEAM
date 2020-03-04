@@ -18,6 +18,8 @@ void send_speed_cmd(unsigned char speed)
   Serial.print("S");
   Serial.print(num);
   Serial.print("\n");
+
+  Serial.flush();
 }
 
 void send_speed_mode(unsigned char mode)
@@ -34,4 +36,6 @@ void send_speed_mode(unsigned char mode)
     Serial.print("s\n");
     break;
   }
+
+  Serial.flush();
 }
