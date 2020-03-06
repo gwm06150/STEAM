@@ -11,6 +11,8 @@
 #define PIN_STEP 7
 #define SOL_1 8 // first solenoid
 #define SOL_2 9 // second solenoid
+#define SOL_3 10 // third solenoid
+#define SOL_4 11 // forth solenoid
 
 // Define State Names
 #define SELF_TEST 0
@@ -51,6 +53,9 @@ void setup() {
   pinMode(PIN_STEP, OUTPUT);
   pinMode(SOL_1, OUTPUT);
   pinMode(SOL_2, OUTPUT);
+  pinMode(SOL_3, OUTPUT);
+  pinMode(SOL_4, OUTPUT);
+
 
   pinMode(LED_BUILTIN, OUTPUT);
 }
@@ -225,7 +230,9 @@ void solenoidValveTiming(){
     // start by firing solenoid 1
     digitalWrite(SOL_1, HIGH);
     digitalWrite(SOL_2, LOW);
-
+    digitalWrite(SOL_3, LOW);
+    digitalWrite(SOL_4, HIGH);
+    
     // update the solenoid timer
     solenoidTimer = timeNow;
 
@@ -235,6 +242,8 @@ void solenoidValveTiming(){
     // start by firing solenoid 1
     digitalWrite(SOL_1, LOW);
     digitalWrite(SOL_2, HIGH);
+    digitalWrite(SOL_3, HIGH);
+    digitalWrite(SOL_4, LOW);
 
     // update the solenoid timer
     solenoidTimer = timeNow;
