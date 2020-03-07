@@ -55,22 +55,17 @@ void setup() {
   pinMode(SOL_2, OUTPUT);
   pinMode(SOL_3, OUTPUT);
   pinMode(SOL_4, OUTPUT);
-
-
-  pinMode(LED_BUILTIN, OUTPUT);
 }
 
-// Main loop of engine code
-void loop() {
+
+void loop() { // start of main loop
+
   // Update Time at start of Loop
   timeNow = millis();
 
-  // Read input from serial and set valves as needed
-  // S<number>\n 
-  // r\n
-  // f\n 
-  // s\n 
-  while(Serial.available() > 0) {
+
+  while(Serial.available() > 0) { // *** START OF SERIAL SECTION ***
+    // Read input from serial and set valves as needed
     char c = Serial.read();
 
     // if c is any character except a newline, store it 
@@ -79,57 +74,54 @@ void loop() {
       serialIndex++;
     } else {
       // if c is a newline, run the command, then reset
-
       // run the command 
       switch(serialBuffer[0]) {
-      case 's': solenoidDirection = STOP; 
+      case 's': solenoidDirection = STOP; // Stop engine
         break; 
-      case 'f': solenoidDirection = FORWARD; 
+      case 'f': solenoidDirection = FORWARD; // Forward engine
         break; 
-      case 'r': solenoidDirection = REVERSE; 
+      case 'r': solenoidDirection = REVERSE; // Rever engine
         break;
-      case 'S': 
+      case 'S': // preceeds the speed setting of the engine
         {
           int conversion = -1;
           conversion = atoi(serialBuffer+1); // get the speed value from the controller
           if(conversion != -1) {
             char buffer[10] = "";
 
-            sprintf(buffer, "OK%d\n", conversion);
+            sprintf(buffer, "OK%d\n", conversion); // confirm the command. 
 
-            valvePositionSet = 10 * conversion; 
+            valvePositionSet = 10 * conversion; // scales input value
             Serial.print(buffer);
 
           } else {
-            Serial.print("NG\n");
+            Serial.print("NG\n"); // if the speed sent is no good send NG
           }
 
-          Serial.flush();
+          Serial.flush(); // clear out and wait
         }
-        break;
-      default:
-        break; 
+          break;
+
+        default:
+          break; 
       }
 
       // reset 
       memset(serialBuffer, 0, sizeof(char)*50);
       serialIndex = 0;
-
     }
+  } // END OF SERIAL SECTION
 
-  } 
-
-  // START OF SELF TEST STATE__________________________________________________________________________________________________________
-  if (engineState == SELF_TEST){
+  if (engineState == SELF_TEST){ // *** START OF SEFL TEST ***
     // Set UP and Test Engine
-    // If self test fails move to error State
+    // Check that the engine has supply pressure
 
-    // If self test passes move to error state
+    // Check that the flow controller is homed, if not home it
 
   } // END OF SELF TEST STATE
 
-  // START OF ERROR STATE__________________________________________________________________________________________________________
-  if (engineState == ERROR){
+
+  if (engineState == ERROR){ // *** START OF ERROR ***
     // Wait until the controller prompts to move back to self test
     // If controller prompts, move to self test
 
@@ -137,16 +129,17 @@ void loop() {
 
   } // END OF ERROR STATE
 
-  //START OF LISTEN STATE__________________________________________________________________________________________________________
-  if (engineState == LISTEN){
+  if (engineState == LISTEN){ // *** START OF LISTEN ***
     // change the solenoid valves as programmed
     if(solenoidDirection == 1){
       // Stop valve timing
       digitalWrite(SOL_1, LOW);
       digitalWrite(SOL_2, LOW);
+    
     } else if(solenoidDirection == 2){
       // Start in forward condition
       solenoidValveTiming();
+    
     } else if(solenoidDirection == 3){
       // Start in reverse condition
       solenoidValveTiming();
@@ -156,9 +149,11 @@ void loop() {
     if(valvePositionSet > valveStepCount){
       // Open the valve to the set point
       stepFlowValveOpen();
+    
     } else if(valvePositionSet < valveStepCount){
       // Close the valve to the set point
       stepFlowValveClosed();
+    
     } else if(valvePositionSet == valveStepCount){
       // Do nothing
     }
@@ -184,7 +179,7 @@ void stepFlowValveClosed(){
     pulseState = 1;
   } else if (pulseState == 1){
     // check that the pulse has started
-    if((timeNow - pulseTimer) >= PULSEWIDTH){
+    if((timeNow - pulseTime r) >= PULSEWIDTH){
       // check that the pulse has gone on long enough
       
       // bring the pusle pin low
