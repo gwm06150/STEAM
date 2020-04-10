@@ -9,8 +9,8 @@
 // Define Pins
 // TX0, serial com
 // TX1, serial com
-#define PIN_DIR 4 // set pin high to close valve, flow controller servo direction
-#define PIN_STEP 7 // pin to step flow controller servo
+#define PIN_DIR 20 // set pin high to close valve, flow controller servo direction
+#define PIN_STEP 22 // pin to step flow controller servo
 #define SOL_1 31 // first solenoid
 #define SOL_2 33 // second solenoid
 #define SOL_3 35 // third solenoid
@@ -54,6 +54,9 @@ unsigned int serialIndex = 0;
 // Function Prototypes
 void stepFlowValveOpen();
 void stepFlowValveClosed();
+void enc_ch_a();
+void enc_ch_b();
+void enc_ch_z();
 
 // Set up loop
 void setup() {
@@ -71,6 +74,9 @@ void setup() {
   pinMode(SOL_4, OUTPUT);
 
   // Pins for encoder interupts
+  attachInterrupt(digitalPinToInterrupt(ENCODER_A), isrA, RISING);
+  attachInterrupt(digitalPinToInterrupt(ENCODER_B), isrB, RISING);
+  attachInterrupt(digitalPinToInterrupt(ENCODER_Z), isrZ, RISING);
 
 }
 
@@ -266,4 +272,25 @@ void solenoidValveTiming(){
     // update the solenoid state
     solenoidState = 0;
   }
+} // END OF SOLENOID VALVE TIMING
+
+void enc_ch_a(){
+  // McGuinnes, John J.
+  // ISR to shandle encoder channel A
+
+}
+
+void enc_ch_b(){
+  // McGuinness, John J.
+  // ISR to handle encoder channel B 
+
+}
+
+void enc_ch_z(){
+  // McGuinness, John J. 
+  // ISR to handle encoder channel Z
+  // Note that this channel only has to be used once immediately after power up once the engine has cycled one time.
+  // the home position shouldn't really be drifting at all. The major sources of EMI are pretty far away in the 
+  // control cluster and should not be able to mess with the encoder at all. At least as far as I know. 
+  
 }
