@@ -7,12 +7,21 @@
 
 
 // Define Pins
-#define PIN_DIR 4 // set pin high to close valve
-#define PIN_STEP 7
-#define SOL_1 8 // first solenoid
-#define SOL_2 9 // second solenoid
-#define SOL_3 10 // third solenoid
-#define SOL_4 11 // forth solenoid
+// TX0, serial com
+// TX1, serial com
+#define PIN_DIR 4 // set pin high to close valve, flow controller servo direction
+#define PIN_STEP 7 // pin to step flow controller servo
+#define SOL_1 31 // first solenoid
+#define SOL_2 33 // second solenoid
+#define SOL_3 35 // third solenoid
+#define SOL_4 37 // forth solenoid
+#define SOL_5 39 // fifth solenoid
+#define SOL_6 41 // sixth solenoid
+#define SOL_7 43 // seventh solenoid
+#define SOL_8 45 // eight solenoid
+#define ENCODER_A 19 // encoder interupt 1, signal
+#define ENCODER_B 20 // encoder interupt 2, signal
+#define ENCODER_Z 21 // encoder interupt 3, index
 
 // Define State Names
 #define SELF_TEST 0
@@ -48,13 +57,21 @@ void stepFlowValveClosed();
 
 // Set up loop
 void setup() {
+  // Set up the serial coms
   Serial.begin(9600);
+  
+  // Pins for flow controlller servo
   pinMode(PIN_DIR, OUTPUT);
   pinMode(PIN_STEP, OUTPUT);
+
+ // Pins for engine solenoids
   pinMode(SOL_1, OUTPUT);
   pinMode(SOL_2, OUTPUT);
   pinMode(SOL_3, OUTPUT);
   pinMode(SOL_4, OUTPUT);
+
+  // Pins for encoder interupts
+
 }
 
 
@@ -161,6 +178,7 @@ void loop() { // start of main loop
 } // end of loop
 
 void stepFlowValveClosed(){
+  // McGuinness, John J.
   // used to step the flow contorller closed
   // millis() used to control the width of the pulse
   // a min pulse width for the controller must be maintained in order for it to step properly
@@ -194,6 +212,7 @@ void stepFlowValveClosed(){
 } // END OF FLOW VALVE CLOSE
 
 void stepFlowValveOpen(){
+  // McGuinness, John J.
   // used to step the flow contorller closed
   // millis() used to control the width of the pulse
   // a min pulse width for the controller must be maintained in order for it to step properly
@@ -221,6 +240,7 @@ void stepFlowValveOpen(){
 } // END OF FLOW VALVE OPEN
 
 void solenoidValveTiming(){
+  // McGuinness, John J.
   if(solenoidState == 0 && ((timeNow - solenoidTimer) >= VALVESWITCHTIME)){
     // start by firing solenoid 1
     digitalWrite(SOL_1, HIGH);
