@@ -1,6 +1,7 @@
 {
     "programmer": "AVRISP mkII",
-    "board": "arduino:avr:uno",
+    "board": "arduino:avr:mega",
     "port": "COM10",
-    "sketch": "tests\\test-flow-control-subsys\\test-flow-control-subsys.ino"
+    "sketch": "tests\\test-flow-control-subsys\\test-flow-control-subsys.ino",
+    "configuration": "cpu=atmega2560"
 }

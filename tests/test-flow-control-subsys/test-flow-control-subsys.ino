@@ -35,32 +35,40 @@
 #define FORWARD 2
 #define REVERSE 3
 
+// Define Function Calls
+#define READ_B bitRead(PIND, ENCODER_B) // faster than using the digital read function
+
 
 // Global variables
 unsigned long timeNow = 0; // this should take several days before running over
-int engineState = LISTEN;
-unsigned long period = 500;
-unsigned long pulseTimer = 0;
-int valveStepCount = 0;
-int pulseState = 0;
-int solenoidState = 0;
-unsigned long solenoidTimer = 0;
-int valvePositionSet = 0;
-int valvePositionActual = 0;
-int solenoidDirection = 1;
-char serialBuffer[50] = "";
-unsigned int serialIndex = 0;
+int engineState = LISTEN; // state the engine micro controller is operating in
+unsigned long period = 500; // the period for the steper motor pulse
+unsigned long pulseTimer = 0; // the timer to check the stepper motor pulse
+int valveStepCount = 0; // the number of steps from home the valve stepper is
+int pulseState = 0; // is the pulse high or low 
+int solenoidState = 0; // is the solenoid triggered or not
+unsigned long solenoidTimer = 0; // checks the length of time that the solenoid has been open
+int valvePositionSet = 0; // the step count to which the flow controller valve has been set
+int valvePositionActual = 0; // the position that the flow controller is at currently
+int solenoidDirection = 1; // the direction in which the solenoids are being fired
+char serialBuffer[50] = ""; // the buffer for serial communication with the pendant controller
+unsigned int serialIndex = 0; // the index tracker for the serial buffer
+ 
+volatile byte enc_state_A = LOW; // encoder channel A state
+volatile byte enc_state_Z = LOW; // encoder channel Z state
+int angle_count = 0; // the counter that keeps track of the angle of the engine
+
 
 // Function Prototypes
+// See functions for descriptions of functions
 void stepFlowValveOpen();
 void stepFlowValveClosed();
 void enc_ch_a();
-void enc_ch_b();
 void enc_ch_z();
 
 // Set up loop
 void setup() {
-  // Set up the serial coms
+  // Set up the serial coms at 9600 baud
   Serial.begin(9600);
   
   // Pins for flow controlller servo
@@ -74,11 +82,11 @@ void setup() {
   pinMode(SOL_4, OUTPUT);
 
   // Pins for encoder interupts
-  attachInterrupt(digitalPinToInterrupt(ENCODER_A), isrA, RISING);
-  attachInterrupt(digitalPinToInterrupt(ENCODER_B), isrB, RISING);
-  attachInterrupt(digitalPinToInterrupt(ENCODER_Z), isrZ, RISING);
-
-}
+  attachInterrupt(digitalPinToInterrupt(ENCODER_A), enc_ch_a, RISING);
+  pinMode(ENCODER_B, INPUT);
+  // attachInterrupt(digitalPinToInterrupt(ENCODER_B), enc_ch_b, RISING);
+  attachInterrupt(digitalPinToInterrupt(ENCODER_Z), enc_ch_z, RISING);
+} // END OF SET UP LOOP
 
 
 void loop() { // start of main loop
@@ -203,7 +211,7 @@ void stepFlowValveClosed(){
     pulseState = 1;
   } else if (pulseState == 1){
     // check that the pulse has started
-    if((timeNow - pulseTime r) >= PULSEWIDTH){
+    if((timeNow - pulseTimer) >= PULSEWIDTH){
       // check that the pulse has gone on long enough
       
       // bring the pusle pin low
@@ -276,15 +284,19 @@ void solenoidValveTiming(){
 
 void enc_ch_a(){
   // McGuinnes, John J.
-  // ISR to shandle encoder channel A
+  // ISR to handle encoder channel A
+  // If this function has been called then chanel A has encountered a rising edge. 
+  noInterrupts();
+  if(READ_B == HIGH){
+    // if channel B is high the encoder is spining CW
+    angle_count++;
 
-}
-
-void enc_ch_b(){
-  // McGuinness, John J.
-  // ISR to handle encoder channel B 
-
-}
+  } else if (READ_B == LOW){
+  // If channel B is low the encoder is spinning CCW
+    angle_count--;
+  } 
+  interrupts();
+} // END OF ENC_CH_A
 
 void enc_ch_z(){
   // McGuinness, John J. 
@@ -292,5 +304,9 @@ void enc_ch_z(){
   // Note that this channel only has to be used once immediately after power up once the engine has cycled one time.
   // the home position shouldn't really be drifting at all. The major sources of EMI are pretty far away in the 
   // control cluster and should not be able to mess with the encoder at all. At least as far as I know. 
-  
-}
+  noInterrupts();
+  angle_count = 0;
+  // the angle keeps track of the number of pulses away from the home position that the encoder has turned.
+  // if the encoder does not appear to be perfectly set onto the shaft of the engine for the timing, an offset can be added here
+  interrupts(); 
+} // END OF ENC_CH_Z
