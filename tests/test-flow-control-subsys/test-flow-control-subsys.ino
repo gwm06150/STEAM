@@ -80,6 +80,10 @@ void setup() {
   pinMode(SOL_2, OUTPUT);
   pinMode(SOL_3, OUTPUT);
   pinMode(SOL_4, OUTPUT);
+  pinMode(SOL_5, OUTPUT);
+  pinMode(SOL_6, OUTPUT);
+  pinMode(SOL_7, OUTPUT);
+  pinMode(SOL_8, OUTPUT);
 
   // Pins for encoder interupts
   attachInterrupt(digitalPinToInterrupt(ENCODER_A), enc_ch_a, RISING);
