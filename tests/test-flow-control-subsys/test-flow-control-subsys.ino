@@ -36,8 +36,23 @@
 #define REVERSE 3
 
 // Define Function Calls
-#define READ_B bitRead(PIND, ENCODER_B) // faster than using the digital read function
+#define IN_SOL_1_ON digitalWrite(SOL_1, HIGH); // first solenoid open
+#define EX_SOL_2_ON digitalWrite(SOL_2, HIGH); // second solenoid open
+#define IN_SOL_3_ON digitalWrite(SOL_3, HIGH); // third solenoid open
+#define EX_SOL_4_ON digitalWrite(SOL_4, HIGH); // forth solenoid open
+#define IN_SOL_5_ON digitalWrite(SOL_5, HIGH); // fifth solenoid open
+#define EX_SOL_6_ON digitalWrite(SOL_6, HIGH); // sixth solenoid open
+#define IN_SOL_7_ON digitalWrite(SOL_7, HIGH); // seventh solenoid open
+#define EX_SOL_8_ON digitalWrite(SOL_8, HIGH); // eigth solenoid open
 
+#define IN_SOL_1_OFF digitalWrite(SOL_1, LOW); // first solenoid close
+#define EX_SOL_2_OFF digitalWrite(SOL_2, LOW); // second solenoid close
+#define IN_SOL_3_OFF digitalWrite(SOL_3, LOW); // third solenoid close
+#define EX_SOL_4_OFF digitalWrite(SOL_4, LOW); // forth solenoid close
+#define IN_SOL_5_OFF digitalWrite(SOL_5, LOW); // fifth solenoid close
+#define EX_SOL_6_OFF digitalWrite(SOL_6, LOW); // sixth solenoid close
+#define IN_SOL_7_OFF digitalWrite(SOL_7, LOW); // seventh solenoid close
+#define EX_SOL_8_OFF digitalWrite(SOL_8, LOW); // eigth solenoid close
 
 // Global variables
 unsigned long timeNow = 0; // this should take several days before running over
@@ -53,17 +68,22 @@ int valvePositionActual = 0; // the position that the flow controller is at curr
 int solenoidDirection = 1; // the direction in which the solenoids are being fired
 char serialBuffer[50] = ""; // the buffer for serial communication with the pendant controller
 unsigned int serialIndex = 0; // the index tracker for the serial buffer
- 
-volatile byte enc_state_A = LOW; // encoder channel A state
-volatile byte enc_state_Z = LOW; // encoder channel Z state
-int angle_count = 0; // the counter that keeps track of the angle of the engine
 
+volatile int angle_countA = 0; // the counter that keeps track of the angle of the engine A
+volatile int angle_countB = 0; // the counter that keeps track of the angle of the engine B
+volatile int loop_count = 0; // counts the number of whole loops
+int engineState = 1;
+
+int inAngle = 0;
+int woAngle = 0;
+int exAngle = 0;
 
 // Function Prototypes
 // See functions for descriptions of functions
 void stepFlowValveOpen();
 void stepFlowValveClosed();
 void enc_ch_a();
+void enc_ch_b();
 void enc_ch_z();
 
 // Set up loop
@@ -87,9 +107,9 @@ void setup() {
 
   // Pins for encoder interupts
   attachInterrupt(digitalPinToInterrupt(ENCODER_A), enc_ch_a, RISING);
-  pinMode(ENCODER_B, INPUT);
-  // attachInterrupt(digitalPinToInterrupt(ENCODER_B), enc_ch_b, RISING);
+  attachInterrupt(digitalPinToInterrupt(ENCODER_B), enc_ch_b, RISING);
   attachInterrupt(digitalPinToInterrupt(ENCODER_Z), enc_ch_z, RISING);
+
 } // END OF SET UP LOOP
 
 
@@ -257,6 +277,55 @@ void stepFlowValveOpen(){
   }
 } // END OF FLOW VALVE OPEN
 
+void enc_ch_a(){
+  // McGuinnes, John J.
+  // ISR to handle encoder channel A
+  // If this function has been called then channel A has encountered a rising edge. 
+  angle_countA++;
+} // END OF ENC_CH_A
+
+void enc_ch_b(){
+  // McGuinness, John J.
+  // ISR to handle enocoder channel B
+  // If this function has been called then channel B has encountered a rising edge.
+  angle_countB++;
+}
+
+void enc_ch_z(){
+   // McGuinness, John J. 
+   // ISR to handle encoder channel Z
+   // Note that this channel only has to be used once immediately after power up once the engine has cycled one time.
+   // the home position shouldn't really be drifting at all. The major sources of EMI are pretty far away in the 
+   // control cluster and should not be able to mess with the encoder at all. At least as far as I know. 
+  //noInterrupts();
+  loop_count++;
+  angle_countA = 0;
+  angle_countB = 0;
+   //the angle keeps track of the number of pulses away from the home position that the encoder has turned.
+   // if the encoder does not appear to be perfectly set onto the shaft of the engine for the timing, an offset can be added here
+  //interrupts(); 
+} // END OF ENC_CH_Z
+
+void forward_valve_control(){
+  // top half
+  if(angle_countA < inAngle){
+    // admitting air
+    IN_SOL_1_ON;
+
+  } else if(angle_countA > inAngle && angle_countA < woAngle){
+    // expanding/working air
+
+  } else if(angle_countA > woAngle){
+    // exhausting air
+  }
+
+  // bottom half
+}
+
+void reverse_valve_control(){
+
+}
+
 void solenoidValveTiming(){
   // McGuinness, John J.
   if(solenoidState == 0 && ((timeNow - solenoidTimer) >= VALVESWITCHTIME)){
@@ -285,32 +354,3 @@ void solenoidValveTiming(){
     solenoidState = 0;
   }
 } // END OF SOLENOID VALVE TIMING
-
-void enc_ch_a(){
-  // McGuinnes, John J.
-  // ISR to handle encoder channel A
-  // If this function has been called then chanel A has encountered a rising edge. 
-  noInterrupts();
-  if(READ_B == HIGH){
-    // if channel B is high the encoder is spining CW
-    angle_count++;
-
-  } else if (READ_B == LOW){
-  // If channel B is low the encoder is spinning CCW
-    angle_count--;
-  } 
-  interrupts();
-} // END OF ENC_CH_A
-
-void enc_ch_z(){
-  // McGuinness, John J. 
-  // ISR to handle encoder channel Z
-  // Note that this channel only has to be used once immediately after power up once the engine has cycled one time.
-  // the home position shouldn't really be drifting at all. The major sources of EMI are pretty far away in the 
-  // control cluster and should not be able to mess with the encoder at all. At least as far as I know. 
-  noInterrupts();
-  angle_count = 0;
-  // the angle keeps track of the number of pulses away from the home position that the encoder has turned.
-  // if the encoder does not appear to be perfectly set onto the shaft of the engine for the timing, an offset can be added here
-  interrupts(); 
-} // END OF ENC_CH_Z
