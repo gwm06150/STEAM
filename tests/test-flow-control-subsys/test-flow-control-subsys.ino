@@ -36,23 +36,25 @@
 #define REVERSE 3
 
 // Define Function Calls
-#define IN_SOL_1_ON digitalWrite(SOL_1, HIGH); // first solenoid open
-#define EX_SOL_2_ON digitalWrite(SOL_2, HIGH); // second solenoid open
-#define IN_SOL_3_ON digitalWrite(SOL_3, HIGH); // third solenoid open
-#define EX_SOL_4_ON digitalWrite(SOL_4, HIGH); // forth solenoid open
-#define IN_SOL_5_ON digitalWrite(SOL_5, HIGH); // fifth solenoid open
-#define EX_SOL_6_ON digitalWrite(SOL_6, HIGH); // sixth solenoid open
-#define IN_SOL_7_ON digitalWrite(SOL_7, HIGH); // seventh solenoid open
-#define EX_SOL_8_ON digitalWrite(SOL_8, HIGH); // eigth solenoid open
+  // VALVES ON
+  #define IN_SOL_1_ON digitalWrite(SOL_1, HIGH); // first solenoid open
+  #define EX_SOL_2_ON digitalWrite(SOL_2, HIGH); // second solenoid open
+  #define IN_SOL_3_ON digitalWrite(SOL_3, HIGH); // third solenoid open
+  #define EX_SOL_4_ON digitalWrite(SOL_4, HIGH); // forth solenoid open
+  #define IN_SOL_5_ON digitalWrite(SOL_5, HIGH); // fifth solenoid open
+  #define EX_SOL_6_ON digitalWrite(SOL_6, HIGH); // sixth solenoid open
+  #define IN_SOL_7_ON digitalWrite(SOL_7, HIGH); // seventh solenoid open
+  #define EX_SOL_8_ON digitalWrite(SOL_8, HIGH); // eigth solenoid open
 
-#define IN_SOL_1_OFF digitalWrite(SOL_1, LOW); // first solenoid close
-#define EX_SOL_2_OFF digitalWrite(SOL_2, LOW); // second solenoid close
-#define IN_SOL_3_OFF digitalWrite(SOL_3, LOW); // third solenoid close
-#define EX_SOL_4_OFF digitalWrite(SOL_4, LOW); // forth solenoid close
-#define IN_SOL_5_OFF digitalWrite(SOL_5, LOW); // fifth solenoid close
-#define EX_SOL_6_OFF digitalWrite(SOL_6, LOW); // sixth solenoid close
-#define IN_SOL_7_OFF digitalWrite(SOL_7, LOW); // seventh solenoid close
-#define EX_SOL_8_OFF digitalWrite(SOL_8, LOW); // eigth solenoid close
+  // VALVES CLOSE
+  #define IN_SOL_1_OFF digitalWrite(SOL_1, LOW); // first solenoid close
+  #define EX_SOL_2_OFF digitalWrite(SOL_2, LOW); // second solenoid close
+  #define IN_SOL_3_OFF digitalWrite(SOL_3, LOW); // third solenoid close
+  #define EX_SOL_4_OFF digitalWrite(SOL_4, LOW); // forth solenoid close
+  #define IN_SOL_5_OFF digitalWrite(SOL_5, LOW); // fifth solenoid close
+  #define EX_SOL_6_OFF digitalWrite(SOL_6, LOW); // sixth solenoid close
+  #define IN_SOL_7_OFF digitalWrite(SOL_7, LOW); // seventh solenoid close
+  #define EX_SOL_8_OFF digitalWrite(SOL_8, LOW); // eigth solenoid close
 
 // Global variables
 unsigned long timeNow = 0; // this should take several days before running over
@@ -76,7 +78,6 @@ int engineState = 1;
 
 int inAngle = 0;
 int woAngle = 0;
-int exAngle = 0;
 
 // Function Prototypes
 // See functions for descriptions of functions
@@ -311,15 +312,46 @@ void forward_valve_control(){
   if(angle_countA < inAngle){
     // admitting air
     IN_SOL_1_ON;
+    EX_SOL_2_OFF;
+    IN_SOL_3_OFF; 
+    EX_SOL_4_ON;
 
   } else if(angle_countA > inAngle && angle_countA < woAngle){
     // expanding/working air
+    IN_SOL_1_OFF;
+    EX_SOL_2_OFF;
+    IN_SOL_3_OFF; 
+    EX_SOL_4_ON;
 
   } else if(angle_countA > woAngle){
     // exhausting air
+    IN_SOL_1_OFF;
+    EX_SOL_2_ON;
+    IN_SOL_3_ON; 
+    EX_SOL_4_OFF;
+  
+  } else if((angle_countA - 1024) < inAngle){
+    // admitting air
+    IN_SOL_1_OFF;
+    EX_SOL_2_ON;
+    IN_SOL_3_ON; 
+    EX_SOL_4_OFF;
+
+  } else if((angle_countA - 1024) > inAngle && (angle_countA - 1024) < woAngle){
+    // expanding/working air
+    IN_SOL_1_ON;
+    EX_SOL_2_OFF;
+    IN_SOL_3_OFF; 
+    EX_SOL_4_OFF;
+
+  } else if((angle_countA - 1024) > woAngle){
+    // exhausting air
+    IN_SOL_1_ON;
+    EX_SOL_2_OFF;
+    IN_SOL_3_OFF; 
+    EX_SOL_4_ON;
   }
 
-  // bottom half
 }
 
 void reverse_valve_control(){
