@@ -5,14 +5,14 @@
 
 #include <string.h>
 
-#define MAX_RPMS 100
+#define MAX_FLOW_SET 500
 
 static unsigned int menuState = MENU_UNINITIALIZED;
 static unsigned int nextMenuState = MENU_UNINITIALIZED;
 
 // speed control state variables 
 static unsigned char speedMode = SPEED_STOPPED;
-static unsigned char speedSetting = 0;
+static unsigned short speedSetting = 0;
 
 static char serialBuffer[50];
 static unsigned int serialIndex = 0;
@@ -239,8 +239,8 @@ void loop()
     case MENU_SETSPEED_VVT:
       if(encoder_going_cw()) {
         
-        if(speedSetting+5 > MAX_RPMS)
-          speedSetting = MAX_RPMS;
+        if(speedSetting+5 > MAX_FLOW_SET)
+          speedSetting = MAX_FLOW_SET;
         else 
           speedSetting+=5;
       } else {
