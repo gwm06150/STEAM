@@ -75,8 +75,8 @@ volatile int angle_countA = 0; // the counter that keeps track of the angle of t
 volatile int angle_countB = 0; // the counter that keeps track of the angle of the engine B
 volatile int loop_count = 0; // counts the number of whole loops
 
-int inAngle = 125;
-int woAngle = 1020;
+// int inAngle = 125;
+// int woAngle = 1020;
 
 // Function Prototypes
 // See functions for descriptions of functions
@@ -326,7 +326,7 @@ EX_SOL_2_OFF;\
 IN_SOL_3_OFF; \
 EX_SOL_4_ON
 
-#define P1_EXHAUST_FWD \
+#define P1_EXHAUST \
 IN_SOL_1_OFF;\
 EX_SOL_2_ON;\
 IN_SOL_3_OFF; \
@@ -344,12 +344,6 @@ EX_SOL_2_ON;\
 IN_SOL_3_OFF; \
 EX_SOL_4_OFF
 
-#define P1_EXHAUST_REV \
-IN_SOL_1_OFF;\
-EX_SOL_2_ON;\
-IN_SOL_3_OFF; \
-EX_SOL_4_ON
-
 
 
 #define P2_ADMIT_FWD \
@@ -364,7 +358,7 @@ EX_SOL_6_OFF;\
 IN_SOL_7_OFF; \
 EX_SOL_8_ON
 
-#define P2_EXHAUST_FWD \
+#define P2_EXHAUST \
 IN_SOL_5_OFF;\
 EX_SOL_6_ON;\
 IN_SOL_7_OFF; \
@@ -382,71 +376,92 @@ EX_SOL_6_ON;\
 IN_SOL_7_OFF; \
 EX_SOL_8_OFF
 
-#define P2_EXHAUST_REV \
-IN_SOL_5_OFF;\
-EX_SOL_6_ON;\
-IN_SOL_7_OFF; \
-EX_SOL_8_ON
 
+int deadZone = 100;
 
-
-void forward_valve_control(){
+void forward_valve_control() 
+{
   int phasedCount = angle_countA - 512; // 90 degrees lead
   if(phasedCount < 0) phasedCount += 2048; // wrap value if over 2048
-  
-  // top half
-  if(angle_countA > 300 && angle_countA < inAngle){
-    // admitting air
+
+  if(angle_countA > 0 && angle_countA < deadZone) {
+    P1_EXHAUST;
+  } else if(angle_countA > deadZone && angle_countA < 1024-deadZone) {
     P1_ADMIT_FWD;
-
-  } else if(angle_countA > inAngle && angle_countA < woAngle){
-    // expanding/working air
-    P1_EXPAND_FWD;
-
-  } else if(angle_countA > woAngle && angle_countA < 1024){
-    // exhausting air
-    P1_EXHAUST_FWD;
-  
-  } else if((angle_countA - 1024) < inAngle){ // TODO: adjust for piston diameter difference
-    // admitting air
+  } else if(angle_countA > 1024-deadZone && angle_countA < 1024+deadZone) {
+    P1_EXHAUST; 
+  } else if(angle_countA > 1024+deadZone && angle_countA < 2048-deadZone) {
     P1_ADMIT_REV;
-
-  } else if((angle_countA - 1024) > inAngle && (angle_countA - 1024) < woAngle){
-    // expanding/working air
-    P1_EXPAND_REV;
-
-  } else if((angle_countA - 1024) > woAngle){
-    // exhausting air
-    P1_EXHAUST_REV;
   }
 
-  // top half
-  if(phasedCount > 300 && phasedCount < inAngle){
-    // admitting air
-    P2_ADMIT_REV;
-
-  } else if(phasedCount > inAngle && phasedCount < woAngle){
-    // expanding/working air
-    P2_EXPAND_REV;
-
-  } else if(phasedCount > woAngle && phasedCount < 1024){
-    // exhausting air
-    P2_EXHAUST_REV;
-  
-  } else if((phasedCount - 1024) < inAngle){ // TODO: adjust for piston diameter difference
-    // admitting air
+  if(phasedCount > 0 && phasedCount < deadZone) {
+    P2_EXHAUST;
+  } else if(phasedCount > deadZone && phasedCount < 1024-deadZone) {
     P2_ADMIT_FWD;
-
-  } else if((phasedCount - 1024) > inAngle && (phasedCount - 1024) < woAngle){
-    // expanding/working air
-    P2_EXPAND_FWD;
-
-  } else if((phasedCount - 1024) > woAngle){
-    // exhausting air
-    P2_EXHAUST_FWD;
+  } else if(phasedCount > 1024-deadZone && phasedCount < 1024+deadZone) {
+    P2_EXHAUST; 
+  } else if(phasedCount > 1024+deadZone && phasedCount < 2048-deadZone) {
+    P2_ADMIT_REV;
   }
-
 }
+
+// void forward_valve_control(){
+//   int phasedCount = angle_countA - 512; // 90 degrees lead
+//   if(phasedCount < 0) phasedCount += 2048; // wrap value if over 2048
+  
+//   // top half
+//   if(angle_countA > 300 && angle_countA < inAngle){
+//     // admitting air
+//     P1_ADMIT_FWD;
+
+//   } else if(angle_countA > inAngle && angle_countA < woAngle){
+//     // expanding/working air
+//     P1_EXPAND_FWD;
+
+//   } else if(angle_countA > woAngle && angle_countA < 1024){
+//     // exhausting air
+//     P1_EXHAUST_FWD;
+  
+//   } else if((angle_countA - 1024) < inAngle){ // TODO: adjust for piston diameter difference
+//     // admitting air
+//     P1_ADMIT_REV;
+
+//   } else if((angle_countA - 1024) > inAngle && (angle_countA - 1024) < woAngle){
+//     // expanding/working air
+//     P1_EXPAND_REV;
+
+//   } else if((angle_countA - 1024) > woAngle){
+//     // exhausting air
+//     P1_EXHAUST_REV;
+//   }
+
+//   // top half
+//   if(phasedCount > 300 && phasedCount < inAngle){
+//     // admitting air
+//     P2_ADMIT_REV;
+
+//   } else if(phasedCount > inAngle && phasedCount < woAngle){
+//     // expanding/working air
+//     P2_EXPAND_REV;
+
+//   } else if(phasedCount > woAngle && phasedCount < 1024){
+//     // exhausting air
+//     P2_EXHAUST_REV;
+  
+//   } else if((phasedCount - 1024) < inAngle){ // TODO: adjust for piston diameter difference
+//     // admitting air
+//     P2_ADMIT_FWD;
+
+//   } else if((phasedCount - 1024) > inAngle && (phasedCount - 1024) < woAngle){
+//     // expanding/working air
+//     P2_EXPAND_FWD;
+
+//   } else if((phasedCount - 1024) > woAngle){
+//     // exhausting air
+//     P2_EXHAUST_FWD;
+//   }
+
+// }
 
 void reverse_valve_control(){
 
