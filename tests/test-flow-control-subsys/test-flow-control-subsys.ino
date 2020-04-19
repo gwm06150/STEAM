@@ -81,8 +81,38 @@ volatile int angle_countA = 0; // the counter that keeps track of the angle of t
 volatile int angle_countB = 0; // the counter that keeps track of the angle of the engine B
 volatile int loop_count = 0; // counts the number of whole loops
 
-// int inAngle = 125;
-// int woAngle = 1020;
+
+// How many samples do we use for finding the RPM?
+#define SPEED_SAMPLE_COUNT 3 
+unsigned long speedSamples[SPEED_SAMPLE_COUNT]; 
+unsigned long lastSample = 0;
+int measuredRPM = 0; 
+// timing variable to only send RPM 
+// periodically (since it is an expensive calculation)
+unsigned long nextRpmReadout = 0;
+// Send an RPM readout every second
+#define TIME_BETWEEN_READOUTS 1000
+
+void calculate_rpm(void)
+{
+  // take the average of the speed samples 
+  unsigned long sum = 0;
+  for(int i = 0; i < SPEED_SAMPLE_COUNT; i++) 
+    sum += speedSamples[i];
+  
+  sum /= SPEED_SAMPLE_COUNT; 
+
+  if(sum != 0) {
+    // ms per rev * (1 sec / 1000ms) * (1 min / 60 sec)
+    // (min per rev)^-1 = rev per min = RPM!
+    double rpm = 1.0/((((double)sum)/1000.0)*(1.0/60.0));
+
+    // round and store the RPM
+    measuredRPM = (int)round(rpm);
+  } else {
+    measuredRPM = 0;
+  }
+}
 
 // Function Prototypes
 // See functions for descriptions of functions
@@ -131,6 +161,19 @@ void loop() { // start of main loop
   // Update Time at start of Loop
   timeNow = millis();
 
+  if(timeNow > nextRpmReadout) {
+    char buffer[6] = "";
+
+    // reset timer 
+    nextRpmReadout = timeNow + TIME_BETWEEN_READOUTS;
+    // recalculate RPM 
+    calculate_rpm();
+    // put rpm into S code message 
+    sprintf(buffer, "S%d\n", measuredRPM);
+    // send readout to controller 
+    Serial.print(buffer);
+    Serial.flush();
+  }
 
   while(Serial.available() > 0) { // *** START OF SERIAL SECTION ***
     // Read input from serial and set valves as needed
@@ -145,8 +188,12 @@ void loop() { // start of main loop
       // run the command 
       switch(serialBuffer[0]) {
       case 'e': expansionEnabled = false; 
+        Serial.print("OK\n");
+        Serial.flush();
         break; 
       case 'E': expansionEnabled = true; 
+        Serial.print("OK\n");
+        Serial.flush();
         break; 
       case 's': solenoidDirection = STOP; // Stop engine
         break; 
@@ -316,8 +363,16 @@ void enc_ch_b(){
   angle_countB++;
 }
 
+
 void enc_ch_z(){
   static int b = 0;
+  unsigned long now = millis();
+  for(int i = 0; i < SPEED_SAMPLE_COUNT-1; i++) {
+    speedSamples[i] = speedSamples[i+1];
+  }
+
+  speedSamples[SPEED_SAMPLE_COUNT-1] = now - lastSample; 
+  lastSample = now;
   
    // McGuinness, John J. 
    // ISR to handle encoder channel Z
@@ -333,6 +388,10 @@ void enc_ch_z(){
   //interrupts(); 
 
   pinMode(LED_BUILTIN, (b = !b, b? HIGH: LOW));
+
+
+
+
 } // END OF ENC_CH_Z
 
 #define P1_ADMIT_FWD {\
