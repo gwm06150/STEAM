@@ -5,12 +5,12 @@
 // Included Libraries
 #include <string.h>
 
-
 // Define Pins
 // TX0, serial com
 // TX1, serial com
-#define PIN_DIR 20 // set pin high to close valve, flow controller servo direction
-#define PIN_STEP 22 // pin to step flow controller servo
+#define PIN_DIR 47 // set pin high to close valve, flow controller servo direction
+#define PIN_STEP 49 // pin to step flow controller servo
+
 #define SOL_1 31 // first solenoid
 #define SOL_2 33 // second solenoid
 #define SOL_3 35 // third solenoid
@@ -74,7 +74,6 @@ unsigned int serialIndex = 0; // the index tracker for the serial buffer
 volatile int angle_countA = 0; // the counter that keeps track of the angle of the engine A
 volatile int angle_countB = 0; // the counter that keeps track of the angle of the engine B
 volatile int loop_count = 0; // counts the number of whole loops
-int engineState = 1;
 
 int inAngle = 0;
 int woAngle = 0;
@@ -194,11 +193,11 @@ void loop() { // start of main loop
     
     } else if(solenoidDirection == 2){
       // Start in forward condition
-      solenoidValveTiming();
+      forward_valve_control();
     
     } else if(solenoidDirection == 3){
       // Start in reverse condition
-      solenoidValveTiming();
+      forward_valve_control();
     }
     
     // call the appropriate step direction for the flow controller
@@ -307,49 +306,133 @@ void enc_ch_z(){
   //interrupts(); 
 } // END OF ENC_CH_Z
 
+#define P1_ADMIT_FWD \
+IN_SOL_1_ON;  \
+EX_SOL_2_OFF; \
+IN_SOL_3_OFF; \
+EX_SOL_4_ON
+
+#define P1_EXPAND_FWD \
+IN_SOL_1_OFF;\
+EX_SOL_2_OFF;\
+IN_SOL_3_OFF; \
+EX_SOL_4_ON
+
+#define P1_EXHAUST_FWD \
+IN_SOL_1_OFF;\
+EX_SOL_2_ON;\
+IN_SOL_3_ON; \
+EX_SOL_4_OFF
+
+#define P1_ADMIT_REV \
+IN_SOL_1_OFF;\
+EX_SOL_2_ON;\
+IN_SOL_3_ON; \
+EX_SOL_4_OFF
+
+#define P1_EXPAND_REV \
+IN_SOL_1_ON;\
+EX_SOL_2_OFF;\
+IN_SOL_3_OFF; \
+EX_SOL_4_OFF
+
+#define P1_EXHAUST_REV \
+IN_SOL_1_ON;\
+EX_SOL_2_OFF;\
+IN_SOL_3_OFF; \
+EX_SOL_4_ON
+
+#define P2_ADMIT_FWD \
+IN_SOL_5_ON;  \
+EX_SOL_6_OFF; \
+IN_SOL_7_OFF; \
+EX_SOL_8_ON
+
+#define P2_EXPAND_FWD \
+IN_SOL_5_OFF;\
+EX_SOL_6_OFF;\
+IN_SOL_7_OFF; \
+EX_SOL_8_ON
+
+#define P2_EXHAUST_FWD \
+IN_SOL_5_OFF;\
+EX_SOL_6_ON;\
+IN_SOL_7_ON; \
+EX_SOL_8_OFF
+
+#define P2_ADMIT_REV \
+IN_SOL_5_OFF;\
+EX_SOL_6_ON;\
+IN_SOL_7_ON; \
+EX_SOL_8_OFF
+
+#define P2_EXPAND_REV \
+IN_SOL_5_ON;\
+EX_SOL_6_OFF;\
+IN_SOL_7_OFF; \
+EX_SOL_8_OFF
+
+#define P2_EXHAUST_REV \
+IN_SOL_5_ON;\
+EX_SOL_6_OFF;\
+IN_SOL_7_OFF; \
+EX_SOL_8_ON
+
+
 void forward_valve_control(){
+  int phasedCount = angle_countA + 512; // 90 degrees lead
+  if(phasedCount > 2048) phasedCount -= 2048; // wrap value if over 2048
+  
   // top half
   if(angle_countA < inAngle){
     // admitting air
-    IN_SOL_1_ON;
-    EX_SOL_2_OFF;
-    IN_SOL_3_OFF; 
-    EX_SOL_4_ON;
+    P1_ADMIT_FWD;
 
   } else if(angle_countA > inAngle && angle_countA < woAngle){
     // expanding/working air
-    IN_SOL_1_OFF;
-    EX_SOL_2_OFF;
-    IN_SOL_3_OFF; 
-    EX_SOL_4_ON;
+    P1_EXPAND_FWD;
 
   } else if(angle_countA > woAngle){
     // exhausting air
-    IN_SOL_1_OFF;
-    EX_SOL_2_ON;
-    IN_SOL_3_ON; 
-    EX_SOL_4_OFF;
+    P1_EXHAUST_FWD;
   
-  } else if((angle_countA - 1024) < inAngle){
+  } else if((angle_countA - 1024) < inAngle){ // TODO: adjust for piston diameter difference
     // admitting air
-    IN_SOL_1_OFF;
-    EX_SOL_2_ON;
-    IN_SOL_3_ON; 
-    EX_SOL_4_OFF;
+    P1_ADMIT_REV;
 
   } else if((angle_countA - 1024) > inAngle && (angle_countA - 1024) < woAngle){
     // expanding/working air
-    IN_SOL_1_ON;
-    EX_SOL_2_OFF;
-    IN_SOL_3_OFF; 
-    EX_SOL_4_OFF;
+    P1_EXPAND_REV;
 
   } else if((angle_countA - 1024) > woAngle){
     // exhausting air
-    IN_SOL_1_ON;
-    EX_SOL_2_OFF;
-    IN_SOL_3_OFF; 
-    EX_SOL_4_ON;
+    P1_EXHAUST_REV;
+  }
+
+  // top half
+  if(phasedCount < inAngle){
+    // admitting air
+    P2_ADMIT_FWD;
+
+  } else if(phasedCount > inAngle && phasedCount < woAngle){
+    // expanding/working air
+    P2_EXPAND_FWD;
+
+  } else if(phasedCount > woAngle){
+    // exhausting air
+    P2_EXHAUST_FWD;
+  
+  } else if((phasedCount - 1024) < inAngle){ // TODO: adjust for piston diameter difference
+    // admitting air
+    P2_ADMIT_REV;
+
+  } else if((phasedCount - 1024) > inAngle && (phasedCount - 1024) < woAngle){
+    // expanding/working air
+    P2_EXPAND_REV;
+
+  } else if((phasedCount - 1024) > woAngle){
+    // exhausting air
+    P2_EXHAUST_REV;
   }
 
 }
