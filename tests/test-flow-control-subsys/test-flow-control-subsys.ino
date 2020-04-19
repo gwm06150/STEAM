@@ -6,27 +6,32 @@
 #include <string.h>
 
 // Define Pins
-// TX0, serial com
-// TX1, serial com
-#define PIN_DIR 47 // set pin high to close valve, flow controller servo direction
-#define PIN_STEP 49 // pin to step flow controller servo
-
-#define SOL_1 31 // first solenoid
-#define SOL_2 33 // second solenoid
-#define SOL_3 35 // third solenoid
-#define SOL_4 37 // forth solenoid
-#define SOL_5 39 // fifth solenoid
-#define SOL_6 41 // sixth solenoid
-#define SOL_7 43 // seventh solenoid
-#define SOL_8 45 // eight solenoid
-#define ENCODER_A 19 // encoder interupt 1, signal
-#define ENCODER_B 20 // encoder interupt 2, signal
-#define ENCODER_Z 21 // encoder interupt 3, index
+  // TX0, serial com
+  // TX1, serial com
+  // Flow Controller
+  #define PIN_DIR 47 // set pin high to close valve, flow controller servo direction
+  #define PIN_STEP 49 // pin to step flow controller servo
+  #define MOTOR_ENABLE 51 // pin to controll enable/disable for stepper in flow controller
+  
+  // Solenoids
+  #define SOL_1 31 // first solenoid
+  #define SOL_2 33 // second solenoid
+  #define SOL_3 35 // third solenoid
+  #define SOL_4 37 // forth solenoid
+  #define SOL_5 39 // fifth solenoid
+  #define SOL_6 41 // sixth solenoid
+  #define SOL_7 43 // seventh solenoid
+  #define SOL_8 45 // eight solenoid
+  
+  // Engine encoder pins
+  #define ENCODER_A 19 // encoder interupt 1, signal
+  #define ENCODER_B 20 // encoder interupt 2, signal
+  #define ENCODER_Z 21 // encoder interupt 3, index
 
 // Define State Names
 #define SELF_TEST 0
 #define LISTEN 1
-#define ERROR 2
+#define FAULT 2
 
 // Define Values
 #define PULSEWIDTH 1 // set in milliseconds
@@ -94,6 +99,7 @@ void setup() {
   // Pins for flow controlller servo
   pinMode(PIN_DIR, OUTPUT);
   pinMode(PIN_STEP, OUTPUT);
+  pinMode(MOTOR_ENABLE, OUTPUT);
 
  // Pins for engine solenoids
   pinMode(SOL_1, OUTPUT);
@@ -173,18 +179,24 @@ void loop() { // start of main loop
     // Set UP and Test Engine
     // Check that the engine has supply pressure
 
-    // Check that the flow controller is homed, if not home it
+    // Prompt the user to check that the flow controller is gently closed,
+    // wait for the user to confirm the closure
+
+    // Open the exhaust valves for all cylinders
+    // Prompt the user to begin to the homing operation
+    // "Clear engine area" 
+    // Cycle the engine with fixed timing one time. 
 
   } // END OF SELF TEST STATE
 
 
-  if (engineState == ERROR){ // *** START OF ERROR ***
+  if (engineState == FAULT){ // *** START OF FAULT ***
     // Wait until the controller prompts to move back to self test
     // If controller prompts, move to self test
 
     // else, just wait
 
-  } // END OF ERROR STATE
+  } // END OF FAULT STATE
 
   if (engineState == LISTEN){ // *** START OF LISTEN ***
     // change the solenoid valves as programmed
