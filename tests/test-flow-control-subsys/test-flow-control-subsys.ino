@@ -123,6 +123,10 @@ void setup() {
 
 
 void loop() { // start of main loop
+  // temporary variable so that the controller 
+  // can enable and disable experimental expansion 
+  // timing 
+  bool expansionEnabled = false; 
 
   // Update Time at start of Loop
   timeNow = millis();
@@ -140,6 +144,10 @@ void loop() { // start of main loop
       // if c is a newline, run the command, then reset
       // run the command 
       switch(serialBuffer[0]) {
+      case 'e': expansionEnabled = false; 
+        break; 
+      case 'E': expansionEnabled = true; 
+        break; 
       case 's': solenoidDirection = STOP; // Stop engine
         break; 
       case 'f': solenoidDirection = FORWARD; // Forward engine
@@ -210,11 +218,11 @@ void loop() { // start of main loop
     
     } else if(solenoidDirection == 2){
       // Start in forward condition
-      forward_valve_control();
+      valve_control(angle_countA, true, expansionEnabled);
     
     } else if(solenoidDirection == 3){
       // Start in reverse condition
-      forward_valve_control();
+      valve_control(angle_countA, false, expansionEnabled);
     }
     
     // call the appropriate step direction for the flow controller
@@ -327,96 +335,204 @@ void enc_ch_z(){
   pinMode(LED_BUILTIN, (b = !b, b? HIGH: LOW));
 } // END OF ENC_CH_Z
 
-#define P1_ADMIT_FWD \
+#define P1_ADMIT_FWD {\
 IN_SOL_1_ON;  \
 EX_SOL_2_OFF; \
 IN_SOL_3_OFF; \
-EX_SOL_4_ON
+EX_SOL_4_ON; }
 
-#define P1_EXPAND_FWD \
+#define P1_EXPAND_FWD { \
 IN_SOL_1_OFF;\
 EX_SOL_2_OFF;\
 IN_SOL_3_OFF; \
-EX_SOL_4_ON
+EX_SOL_4_ON; }
 
-#define P1_EXHAUST \
+#define P1_EXHAUST { \
 IN_SOL_1_OFF;\
 EX_SOL_2_ON;\
 IN_SOL_3_OFF; \
-EX_SOL_4_ON
+EX_SOL_4_ON; }
 
-#define P1_ADMIT_REV \
+#define P1_ADMIT_REV { \
 IN_SOL_1_OFF;\
 EX_SOL_2_ON;\
 IN_SOL_3_ON; \
-EX_SOL_4_OFF
+EX_SOL_4_OFF; }
 
-#define P1_EXPAND_REV \
+#define P1_EXPAND_REV { \
 IN_SOL_1_OFF;\
 EX_SOL_2_ON;\
 IN_SOL_3_OFF; \
-EX_SOL_4_OFF
+EX_SOL_4_OFF; }
 
 
 
-#define P2_ADMIT_FWD \
+#define P2_ADMIT_FWD { \
 IN_SOL_5_ON;  \
 EX_SOL_6_OFF; \
 IN_SOL_7_OFF; \
-EX_SOL_8_ON
+EX_SOL_8_ON; } 
 
-#define P2_EXPAND_FWD \
+#define P2_EXPAND_FWD { \
 IN_SOL_5_OFF;\
 EX_SOL_6_OFF;\
 IN_SOL_7_OFF; \
-EX_SOL_8_ON
+EX_SOL_8_ON; }
 
-#define P2_EXHAUST \
+#define P2_EXHAUST { \
 IN_SOL_5_OFF;\
 EX_SOL_6_ON;\
 IN_SOL_7_OFF; \
-EX_SOL_8_ON
+EX_SOL_8_ON; }
 
-#define P2_ADMIT_REV \
+#define P2_ADMIT_REV { \
 IN_SOL_5_OFF;\
 EX_SOL_6_ON;\
 IN_SOL_7_ON; \
-EX_SOL_8_OFF
+EX_SOL_8_OFF; }
 
-#define P2_EXPAND_REV \
+#define P2_EXPAND_REV { \
 IN_SOL_5_OFF;\
 EX_SOL_6_ON;\
 IN_SOL_7_OFF; \
-EX_SOL_8_OFF
+EX_SOL_8_OFF; }
 
-
+// Angular/count padding on either side of 
+// the topdead and bottomdead center positions. 
+// (Exhaust region)
 int deadZone = 100;
+// How many steps before the deadzones should the cylinder
+// epand for?
+int expandZone = 100;
 
-void forward_valve_control() 
+// Valve Timing Function 
+// 'angle': the current angle in steps, 0-2048
+// 'forward': which timing scheme to use, forward or reverse
+// 'expansionMode': should we try to expand to maximize efficiency? (temp, experimental)
+void valve_control(int angle, bool forward, bool expansionMode) 
 {
-  int phasedCount = angle_countA - 512; // 90 degrees lead
-  if(phasedCount < 0) phasedCount += 2048; // wrap value if over 2048
+  int phasedAngle = angle - 512; // 90 degrees lead
+  if(phasedAngle < 0) phasedAngle += 2048; // wrap value if over 2048
 
-  if(angle_countA > 0 && angle_countA < deadZone) {
+  // Piston 1 Timings
+  if(angle > 0 && angle < deadZone) {
+    // Deadzone before admitting 
     P1_EXHAUST;
-  } else if(angle_countA > deadZone && angle_countA < 1024-deadZone) {
-    P1_ADMIT_FWD;
-  } else if(angle_countA > 1024-deadZone && angle_countA < 1024+deadZone) {
+  } else if(angle > deadZone && angle < 1024-deadZone-expandZone) {
+    // First admission region. If we're going forward, this should 
+    // push out, otherwise pull in.
+    if(forward) {
+      P1_ADMIT_FWD;
+    } else {
+      P1_ADMIT_REV;
+    }
+
+  } else if(angle > 1024-deadZone-expandZone && angle < 1024-deadZone) {
+    // We've entered the expansion zone, do we actually try to?
+    // Make sure direction matches previous phase.
+    if(expansionMode) {
+      if(forward) {
+        P1_EXPAND_FWD;
+      } else {
+        P1_EXPAND_REV; 
+      }
+    } else {
+      if(forward) {
+        P1_ADMIT_FWD;
+      } else {
+        P1_ADMIT_REV;
+      }
+    }
+
+  } else if(angle > 1024-deadZone && angle < 1024+deadZone) {
+    // Bottom deadzone 
     P1_EXHAUST; 
-  } else if(angle_countA > 1024+deadZone && angle_countA < 2048-deadZone) {
-    P1_ADMIT_REV;
+  } else if(angle > 1024+deadZone && angle < 2048-deadZone-expandZone) {
+    // Second admission region, needs to be the opposite of the first.
+    if(forward) {
+      P1_ADMIT_REV; 
+    } else {
+      P1_ADMIT_FWD; 
+    }
+
+  } else if(angle > 2048-deadZone-expandZone && angle < 2048-deadZone) {
+    // Second expansion region, do we try? 
+    // Make sure direction matches previous phase.
+    if(expansionMode) {
+      if(forward) {
+        P1_EXPAND_REV;
+      } else {
+        P1_EXPAND_FWD; 
+      }
+    } else {
+      if(forward) {
+        P1_ADMIT_REV;
+      } else {
+        P1_ADMIT_FWD;
+      }
+    }
   }
 
-  if(phasedCount > 0 && phasedCount < deadZone) {
+  // Piston 2 Timings
+  if(phasedAngle > 0 && phasedAngle < deadZone) {
+    // Deadzone before admitting 
     P2_EXHAUST;
-  } else if(phasedCount > deadZone && phasedCount < 1024-deadZone) {
-    P2_ADMIT_FWD;
-  } else if(phasedCount > 1024-deadZone && phasedCount < 1024+deadZone) {
+  } else if(phasedAngle > deadZone && phasedAngle < 1024-deadZone-expandZone) {
+    // First admission region. If we're going forward, this should 
+    // push out, otherwise pull in.
+    if(forward) {
+      P2_ADMIT_FWD;
+    } else {
+      P2_ADMIT_REV;
+    }
+
+  } else if(phasedAngle > 1024-deadZone-expandZone && phasedAngle < 1024-deadZone) {
+    // We've entered the expansion zone, do we actually try to?
+    // Make sure direction matches previous phase.
+    if(expansionMode) {
+      if(forward) {
+        P2_EXPAND_FWD;
+      } else {
+        P2_EXPAND_REV; 
+      }
+    } else {
+      if(forward) {
+        P2_ADMIT_FWD;
+      } else {
+        P2_ADMIT_REV;
+      }
+    }
+
+  } else if(phasedAngle > 1024-deadZone && phasedAngle < 1024+deadZone) {
+    // Bottom deadzone 
     P2_EXHAUST; 
-  } else if(phasedCount > 1024+deadZone && phasedCount < 2048-deadZone) {
-    P2_ADMIT_REV;
+  } else if(phasedAngle > 1024+deadZone && phasedAngle < 2048-deadZone-expandZone) {
+    // Second admission region, needs to be the opposite of the first.
+    if(forward) {
+      P2_ADMIT_REV; 
+    } else {
+      P2_ADMIT_FWD; 
+    }
+
+  } else if(phasedAngle > 2048-deadZone-expandZone && phasedAngle < 2048-deadZone) {
+    // Second expansion region, do we try? 
+    // Make sure direction matches previous phase.
+    if(expansionMode) {
+      if(forward) {
+        P2_EXPAND_REV;
+      } else {
+        P2_EXPAND_FWD; 
+      }
+    } else {
+      if(forward) {
+        P2_ADMIT_REV;
+      } else {
+        P2_ADMIT_FWD;
+      }
+    }
   }
 }
+
 
 // void forward_valve_control(){
 //   int phasedCount = angle_countA - 512; // 90 degrees lead
