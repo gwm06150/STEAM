@@ -2,7 +2,7 @@
 #include "surfaces.h"
 #include "pins.h"
 
-#define PULSE_TIMEOUT 80
+#define PULSE_TIMEOUT 0
 
 
 // Encoder related state 
