@@ -39,3 +39,9 @@ void send_speed_mode(unsigned char mode)
 
   Serial.flush();
 }
+
+void send_expansion_mode(bool enabled)
+{
+  Serial.print(enabled?"E":"e");
+  Serial.flush();
+}

@@ -12,4 +12,8 @@ void send_speed_cmd(unsigned char speed);
 // reversing, or forward operation.
 void send_speed_mode(unsigned char mode);
 
+// Sends the appropriate command for enabling or 
+// disabling the expansion phase of the timing code.
+void send_expansion_mode(bool enabled);
+
 #endif//COMMUNICATION_H

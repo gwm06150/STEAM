@@ -33,7 +33,7 @@ void setup()
 
   // for 5 seconds, accept any combinations
   // that set flags
-  bootTime = millis() + 5000;
+  bootTime = millis() + 1000;
   while(millis() < bootTime) {
     unsigned char buttons = check_aux_buttons();
 
@@ -77,6 +77,30 @@ void loop()
       } else if(serialBuffer[0] == 'N' && serialBuffer[1] == 'G') {
         set_display_rgb(255,255,0);
         delay(50);
+      } else if(serialBuffer[0] == 'S') {
+        // we're receiving an RPM
+        int conversion = -1;
+        conversion = atoi(serialBuffer+1);
+
+        // was the conversion successful?
+        if(conversion != -1) {
+          if(menuState == MENU_SETSPEED_VFC || menuState == MENU_SETSPEED_VVT){ 
+            char speed[4] = "";
+            
+            if(conversion < 999) 
+              itoa(conversion, speed, 10);
+            else {
+              // display error speed if its greater than 999..
+              // this shouldnt happen unless there was a glitch or 
+              // our engine is actually good
+              strcpy(speed, "XXX");
+            }
+
+            display_write("   ", 5, 0);
+            display_write(speed, 5, 0);
+            
+          }
+        }
       }
 
       serialIndex = 0;
