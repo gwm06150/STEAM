@@ -75,8 +75,8 @@ volatile int angle_countA = 0; // the counter that keeps track of the angle of t
 volatile int angle_countB = 0; // the counter that keeps track of the angle of the engine B
 volatile int loop_count = 0; // counts the number of whole loops
 
-int inAngle = 0;
-int woAngle = 0;
+int inAngle = 125;
+int woAngle = 1020;
 
 // Function Prototypes
 // See functions for descriptions of functions
@@ -104,6 +104,8 @@ void setup() {
   pinMode(SOL_6, OUTPUT);
   pinMode(SOL_7, OUTPUT);
   pinMode(SOL_8, OUTPUT);
+
+  pinMode(LED_BUILTIN, OUTPUT);
 
   // Pins for encoder interupts
   attachInterrupt(digitalPinToInterrupt(ENCODER_A), enc_ch_a, RISING);
@@ -188,8 +190,10 @@ void loop() { // start of main loop
     // change the solenoid valves as programmed
     if(solenoidDirection == 1){
       // Stop valve timing
-      digitalWrite(SOL_1, LOW);
-      digitalWrite(SOL_2, LOW);
+      EX_SOL_2_ON;
+      EX_SOL_4_ON;
+      EX_SOL_6_ON;
+      EX_SOL_8_ON;
     
     } else if(solenoidDirection == 2){
       // Start in forward condition
@@ -292,6 +296,8 @@ void enc_ch_b(){
 }
 
 void enc_ch_z(){
+  static int b = 0;
+  
    // McGuinness, John J. 
    // ISR to handle encoder channel Z
    // Note that this channel only has to be used once immediately after power up once the engine has cycled one time.
@@ -304,6 +310,8 @@ void enc_ch_z(){
    //the angle keeps track of the number of pulses away from the home position that the encoder has turned.
    // if the encoder does not appear to be perfectly set onto the shaft of the engine for the timing, an offset can be added here
   //interrupts(); 
+
+  pinMode(LED_BUILTIN, (b = !b, b? HIGH: LOW));
 } // END OF ENC_CH_Z
 
 #define P1_ADMIT_FWD \
@@ -321,8 +329,8 @@ EX_SOL_4_ON
 #define P1_EXHAUST_FWD \
 IN_SOL_1_OFF;\
 EX_SOL_2_ON;\
-IN_SOL_3_ON; \
-EX_SOL_4_OFF
+IN_SOL_3_OFF; \
+EX_SOL_4_ON
 
 #define P1_ADMIT_REV \
 IN_SOL_1_OFF;\
@@ -331,16 +339,18 @@ IN_SOL_3_ON; \
 EX_SOL_4_OFF
 
 #define P1_EXPAND_REV \
-IN_SOL_1_ON;\
-EX_SOL_2_OFF;\
+IN_SOL_1_OFF;\
+EX_SOL_2_ON;\
 IN_SOL_3_OFF; \
 EX_SOL_4_OFF
 
 #define P1_EXHAUST_REV \
-IN_SOL_1_ON;\
-EX_SOL_2_OFF;\
+IN_SOL_1_OFF;\
+EX_SOL_2_ON;\
 IN_SOL_3_OFF; \
 EX_SOL_4_ON
+
+
 
 #define P2_ADMIT_FWD \
 IN_SOL_5_ON;  \
@@ -357,8 +367,8 @@ EX_SOL_8_ON
 #define P2_EXHAUST_FWD \
 IN_SOL_5_OFF;\
 EX_SOL_6_ON;\
-IN_SOL_7_ON; \
-EX_SOL_8_OFF
+IN_SOL_7_OFF; \
+EX_SOL_8_ON
 
 #define P2_ADMIT_REV \
 IN_SOL_5_OFF;\
@@ -367,24 +377,25 @@ IN_SOL_7_ON; \
 EX_SOL_8_OFF
 
 #define P2_EXPAND_REV \
-IN_SOL_5_ON;\
-EX_SOL_6_OFF;\
+IN_SOL_5_OFF;\
+EX_SOL_6_ON;\
 IN_SOL_7_OFF; \
 EX_SOL_8_OFF
 
 #define P2_EXHAUST_REV \
-IN_SOL_5_ON;\
-EX_SOL_6_OFF;\
+IN_SOL_5_OFF;\
+EX_SOL_6_ON;\
 IN_SOL_7_OFF; \
 EX_SOL_8_ON
 
 
+
 void forward_valve_control(){
-  int phasedCount = angle_countA + 512; // 90 degrees lead
-  if(phasedCount > 2048) phasedCount -= 2048; // wrap value if over 2048
+  int phasedCount = angle_countA - 512; // 90 degrees lead
+  if(phasedCount < 0) phasedCount += 2048; // wrap value if over 2048
   
   // top half
-  if(angle_countA < inAngle){
+  if(angle_countA > 300 && angle_countA < inAngle){
     // admitting air
     P1_ADMIT_FWD;
 
@@ -392,7 +403,7 @@ void forward_valve_control(){
     // expanding/working air
     P1_EXPAND_FWD;
 
-  } else if(angle_countA > woAngle){
+  } else if(angle_countA > woAngle && angle_countA < 1024){
     // exhausting air
     P1_EXHAUST_FWD;
   
@@ -410,29 +421,29 @@ void forward_valve_control(){
   }
 
   // top half
-  if(phasedCount < inAngle){
-    // admitting air
-    P2_ADMIT_FWD;
-
-  } else if(phasedCount > inAngle && phasedCount < woAngle){
-    // expanding/working air
-    P2_EXPAND_FWD;
-
-  } else if(phasedCount > woAngle){
-    // exhausting air
-    P2_EXHAUST_FWD;
-  
-  } else if((phasedCount - 1024) < inAngle){ // TODO: adjust for piston diameter difference
+  if(phasedCount > 300 && phasedCount < inAngle){
     // admitting air
     P2_ADMIT_REV;
 
-  } else if((phasedCount - 1024) > inAngle && (phasedCount - 1024) < woAngle){
+  } else if(phasedCount > inAngle && phasedCount < woAngle){
     // expanding/working air
     P2_EXPAND_REV;
 
-  } else if((phasedCount - 1024) > woAngle){
+  } else if(phasedCount > woAngle && phasedCount < 1024){
     // exhausting air
     P2_EXHAUST_REV;
+  
+  } else if((phasedCount - 1024) < inAngle){ // TODO: adjust for piston diameter difference
+    // admitting air
+    P2_ADMIT_FWD;
+
+  } else if((phasedCount - 1024) > inAngle && (phasedCount - 1024) < woAngle){
+    // expanding/working air
+    P2_EXPAND_FWD;
+
+  } else if((phasedCount - 1024) > woAngle){
+    // exhausting air
+    P2_EXHAUST_FWD;
   }
 
 }
