@@ -17,6 +17,8 @@ static unsigned short speedSetting = 0;
 static char serialBuffer[50];
 static unsigned int serialIndex = 0;
 
+static bool expansionMode = false;
+
 void setup()
 {
   unsigned int bootTime;
@@ -299,6 +301,17 @@ void loop()
       case MENU_DEBUG:
         display_write("2", 1, 1);
         break;
+      case MENU_SELECT_MODE: 
+        // TODO: move to a proper location
+        expansionMode = !expansionMode;
+        send_expansion_mode(expansionMode);
+        if(expansionMode)
+          display_write("E", 6, 1);
+        else 
+          display_write(" ", 6, 1);
+          
+        break;
+
       case MENU_SETSPEED_VFC:
       case MENU_SETSPEED_VVT:
         if(speedMode == SPEED_STOPPED)
