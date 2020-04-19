@@ -27,6 +27,7 @@
   #define ENCODER_A 19 // encoder interupt 1, signal
   #define ENCODER_B 20 // encoder interupt 2, signal
   #define ENCODER_Z 21 // encoder interupt 3, index
+  
 
 // Define State Names
 #define SELF_TEST 0
