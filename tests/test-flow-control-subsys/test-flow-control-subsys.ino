@@ -265,11 +265,11 @@ void loop() { // start of main loop
     
     } else if(solenoidDirection == 2){
       // Start in forward condition
-      valve_control(angle_countA, true, expansionEnabled);
+      valve_forward_control(angle_countA, true, expansionEnabled);
     
     } else if(solenoidDirection == 3){
       // Start in reverse condition
-      valve_control(angle_countA, false, expansionEnabled);
+      valve_reverse_control(angle_countA, false, expansionEnabled);
     }
     
     // call the appropriate step direction for the flow controller
@@ -466,9 +466,8 @@ int expandZone = 100;
 
 // Valve Timing Function 
 // 'angle': the current angle in steps, 0-2048
-// 'forward': which timing scheme to use, forward or reverse
 // 'expansionMode': should we try to expand to maximize efficiency? (temp, experimental)
-void valve_control(int angle, bool forward, bool expansionMode) 
+void valve_forward_control(int angle, bool expansionMode) 
 {
   int phasedAngle = angle - 512; // 90 degrees lead
   if(phasedAngle < 0) phasedAngle += 2048; // wrap value if over 2048
@@ -478,29 +477,12 @@ void valve_control(int angle, bool forward, bool expansionMode)
     // Deadzone before admitting 
     P1_EXHAUST;
   } else if(angle > deadZone && angle < 1024-deadZone-expandZone) {
-    // First admission region. If we're going forward, this should 
-    // push out, otherwise pull in.
-    if(forward) {
-      P1_ADMIT_FWD;
-    } else {
-      P1_ADMIT_REV;
-    }
-
+    P1_ADMIT_FWD;
   } else if(angle > 1024-deadZone-expandZone && angle < 1024-deadZone) {
-    // We've entered the expansion zone, do we actually try to?
-    // Make sure direction matches previous phase.
     if(expansionMode) {
-      if(forward) {
-        P1_EXPAND_FWD;
-      } else {
-        P1_EXPAND_REV; 
-      }
+      P1_EXPAND_FWD;
     } else {
-      if(forward) {
-        P1_ADMIT_FWD;
-      } else {
-        P1_ADMIT_REV;
-      }
+      P1_ADMIT_FWD;
     }
 
   } else if(angle > 1024-deadZone && angle < 1024+deadZone) {
@@ -508,27 +490,14 @@ void valve_control(int angle, bool forward, bool expansionMode)
     P1_EXHAUST; 
   } else if(angle > 1024+deadZone && angle < 2048-deadZone-expandZone) {
     // Second admission region, needs to be the opposite of the first.
-    if(forward) {
-      P1_ADMIT_REV; 
-    } else {
-      P1_ADMIT_FWD; 
-    }
-
+    P1_ADMIT_REV; 
   } else if(angle > 2048-deadZone-expandZone && angle < 2048-deadZone) {
     // Second expansion region, do we try? 
     // Make sure direction matches previous phase.
     if(expansionMode) {
-      if(forward) {
-        P1_EXPAND_REV;
-      } else {
-        P1_EXPAND_FWD; 
-      }
+      P1_EXPAND_REV;
     } else {
-      if(forward) {
-        P1_ADMIT_REV;
-      } else {
-        P1_ADMIT_FWD;
-      }
+      P1_ADMIT_REV;
     }
   }
 
@@ -537,59 +506,38 @@ void valve_control(int angle, bool forward, bool expansionMode)
     // Deadzone before admitting 
     P2_EXHAUST;
   } else if(phasedAngle > deadZone && phasedAngle < 1024-deadZone-expandZone) {
-    // First admission region. If we're going forward, this should 
-    // push out, otherwise pull in.
-    if(forward) {
-      P2_ADMIT_FWD;
-    } else {
-      P2_ADMIT_REV;
-    }
-
+    // First admission region 
+    P2_ADMIT_FWD;
   } else if(phasedAngle > 1024-deadZone-expandZone && phasedAngle < 1024-deadZone) {
-    // We've entered the expansion zone, do we actually try to?
-    // Make sure direction matches previous phase.
+    // First expansion region, do we try?
     if(expansionMode) {
-      if(forward) {
-        P2_EXPAND_FWD;
-      } else {
-        P2_EXPAND_REV; 
-      }
+      P2_EXPAND_FWD;
     } else {
-      if(forward) {
-        P2_ADMIT_FWD;
-      } else {
-        P2_ADMIT_REV;
-      }
+      P2_ADMIT_FWD;
     }
-
   } else if(phasedAngle > 1024-deadZone && phasedAngle < 1024+deadZone) {
     // Bottom deadzone 
     P2_EXHAUST; 
   } else if(phasedAngle > 1024+deadZone && phasedAngle < 2048-deadZone-expandZone) {
     // Second admission region, needs to be the opposite of the first.
-    if(forward) {
-      P2_ADMIT_REV; 
-    } else {
-      P2_ADMIT_FWD; 
-    }
-
+    P2_ADMIT_REV; 
   } else if(phasedAngle > 2048-deadZone-expandZone && phasedAngle < 2048-deadZone) {
     // Second expansion region, do we try? 
     // Make sure direction matches previous phase.
     if(expansionMode) {
-      if(forward) {
-        P2_EXPAND_REV;
-      } else {
-        P2_EXPAND_FWD; 
-      }
+      P2_EXPAND_REV;
     } else {
-      if(forward) {
-        P2_ADMIT_REV;
-      } else {
-        P2_ADMIT_FWD;
-      }
+      P2_ADMIT_REV;
     }
   }
+}
+
+void reverse_valve_control(int angle, bool expansionMode)
+{
+  int phasedAngle = angle - 512; // 90 degrees lead
+  if(phasedAngle < 0) phasedAngle += 2048; // wrap value if over 2048
+
+  // TODO
 }
 
 
