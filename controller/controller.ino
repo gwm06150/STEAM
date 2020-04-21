@@ -124,7 +124,7 @@ void loop()
     case MENU_SETSPEED_VVT:
       display_clear();
       display_write("Cur:    RPM VVT", 0, 0);
-      display_write("Set:    RPM", 0, 1);
+      display_write("Set:    ", 0, 1);
       
 
 
@@ -152,7 +152,7 @@ void loop()
     case MENU_SETSPEED_VFC: 
       display_clear();
       display_write("Cur:    RPM VFC", 0, 0);
-      display_write("Set:    RPM", 0, 1);
+      display_write("Set:    ", 0, 1);
 
       switch(speedMode) {
       case SPEED_FORWARD: 
