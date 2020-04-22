@@ -62,6 +62,8 @@
   #define IN_SOL_7_OFF digitalWrite(SOL_7, LOW); // seventh solenoid close
   #define EX_SOL_8_OFF digitalWrite(SOL_8, LOW); // eigth solenoid close
 
+  #define READ_B bitRead(ENCODER_B) // check the logigical state of encoder channel B
+
 // Global variables
 unsigned long timeNow = 0; // this should take several days before running over
 int engineState = LISTEN; // state the engine micro controller is operating in
@@ -93,26 +95,7 @@ unsigned long nextRpmReadout = 0;
 // Send an RPM readout every second
 #define TIME_BETWEEN_READOUTS 1000
 
-void calculate_rpm(void)
-{
-  // take the average of the speed samples 
-  unsigned long sum = 0;
-  for(int i = 0; i < SPEED_SAMPLE_COUNT; i++) 
-    sum += speedSamples[i];
-  
-  sum /= SPEED_SAMPLE_COUNT; 
 
-  if(sum != 0) {
-    // ms per rev * (1 sec / 1000ms) * (1 min / 60 sec)
-    // (min per rev)^-1 = rev per min = RPM!
-    double rpm = 1.0/((((double)sum)/1000.0)*(1.0/60.0));
-
-    // round and store the RPM
-    measuredRPM = (int)round(rpm);
-  } else {
-    measuredRPM = 0;
-  }
-}
 
 // Function Prototypes
 // See functions for descriptions of functions
@@ -121,6 +104,7 @@ void stepFlowValveClosed();
 void enc_ch_a();
 void enc_ch_b();
 void enc_ch_z();
+void calculate_rpm();
 
 // Set up loop
 void setup() {
@@ -146,8 +130,11 @@ void setup() {
 
   // Pins for encoder interupts
   attachInterrupt(digitalPinToInterrupt(ENCODER_A), enc_ch_a, RISING);
-  attachInterrupt(digitalPinToInterrupt(ENCODER_B), enc_ch_b, RISING);
+  // attachInterrupt(digitalPinToInterrupt(ENCODER_B), enc_ch_b, RISING);
+      // as of the moment we think that we can get away with only the a channel for positioning the engine and
+      // controlling the timing of the valve.
   attachInterrupt(digitalPinToInterrupt(ENCODER_Z), enc_ch_z, RISING);
+  pinMode(ENCODER_B, INPUT); // used in checking the dirction of turn of the engine. 
 
 } // END OF SET UP LOOP
 
@@ -353,7 +340,15 @@ void enc_ch_a(){
   // McGuinnes, John J.
   // ISR to handle encoder channel A
   // If this function has been called then channel A has encountered a rising edge. 
-  angle_countA++;
+  if(!READ_B){
+    angle_countA++; // if forward direction increment
+  } else{
+    angle_countA--; // if reverse direction decrement
+  }
+  // if the forward valve control loop appears to have broken then remove the ! operator from the if statement
+  // this should swap the increment and decrement case, fixing things. 
+  // the addtion of decrement was to acount for any potential backwards drift during the homing process. though
+  // it might prove useful if we see something weird during the engine running.  
 } // END OF ENC_CH_A
 
 void enc_ch_b(){
@@ -388,9 +383,6 @@ void enc_ch_z(){
   //interrupts(); 
 
   pinMode(LED_BUILTIN, (b = !b, b? HIGH: LOW));
-
-
-
 
 } // END OF ENC_CH_Z
 
@@ -601,6 +593,27 @@ void reverse_valve_control(int angle, bool expansionMode)
 
 void reverse_valve_control(){
 
+}
+
+void calculate_rpm(void)
+{
+  // take the average of the speed samples 
+  unsigned long sum = 0;
+  for(int i = 0; i < SPEED_SAMPLE_COUNT; i++) 
+    sum += speedSamples[i];
+  
+  sum /= SPEED_SAMPLE_COUNT; 
+
+  if(sum != 0) {
+    // ms per rev * (1 sec / 1000ms) * (1 min / 60 sec)
+    // (min per rev)^-1 = rev per min = RPM!
+    double rpm = 1.0/((((double)sum)/1000.0)*(1.0/60.0));
+
+    // round and store the RPM
+    measuredRPM = (int)round(rpm);
+  } else {
+    measuredRPM = 0;
+  }
 }
 
 void solenoidValveTiming(){
