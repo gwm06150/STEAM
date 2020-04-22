@@ -62,7 +62,12 @@
   #define IN_SOL_7_OFF digitalWrite(SOL_7, LOW); // seventh solenoid close
   #define EX_SOL_8_OFF digitalWrite(SOL_8, LOW); // eigth solenoid close
 
+  // ENCODER BIT READER
   #define READ_B bitRead(ENCODER_B) // check the logigical state of encoder channel B
+
+  // STEPPER STUFF
+  #define DISABLE_FLOW_CONTROLLER digitalWrite(MOTOR_ENABLE, HIGH) // diable the stepper motor to allow manual adjustment
+  #define ENABLE_FLOW_CONTROLLER digitalWrite(MOTOR_ENABLE, LOW) // enable the stepper motor to lock adjustment and operate
 
 // Global variables
 unsigned long timeNow = 0; // this should take several days before running over
@@ -224,7 +229,9 @@ void loop() { // start of main loop
 
     // Prompt the user to check that the flow controller is gently closed,
     // wait for the user to confirm the closure
-
+    ENABLE_FLOW_CONTROLLER
+    DISABLE_FLOW_CONTROLLER
+    
     // Open the exhaust valves for all cylinders
     // Prompt the user to begin to the homing operation
     // "Clear engine area" 
