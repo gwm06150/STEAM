@@ -14,14 +14,14 @@
   #define MOTOR_ENABLE 51 // pin to controll enable/disable for stepper in flow controller
   
   // Solenoids
-  #define SOL_8 31 // first solenoid
-  #define SOL_7 33 // second solenoid
-  #define SOL_6 35 // third solenoid
-  #define SOL_5 37 // forth solenoid
-  #define SOL_4 39 // fifth solenoid
-  #define SOL_3 41 // sixth solenoid
-  #define SOL_2 43 // seventh solenoid
-  #define SOL_1 45 // eight solenoid
+  #define SOL_8 31 
+  #define SOL_7 33 
+  #define SOL_6 35 
+  #define SOL_5 37 
+  #define SOL_4 39 
+  #define SOL_3 41 
+  #define SOL_2 43 
+  #define SOL_1 45 
   
   // Engine encoder pins
   #define ENCODER_A 19 // encoder interupt 1, signal
@@ -62,7 +62,7 @@
   #define EX_SOL_8_OFF digitalWrite(SOL_8, LOW); // eigth solenoid close
 
   // ENCODER BIT READER
-  #define READ_B bitRead(ENCODER_B) // check the logigical state of encoder channel B
+  #define READ_B digitalRead(ENCODER_B) // check the logical state of encoder channel B
 
   // STEPPER STUFF
   #define DISABLE_FLOW_CONTROLLER digitalWrite(MOTOR_ENABLE, HIGH) // diable the stepper motor to allow manual adjustment
@@ -70,7 +70,7 @@
 
 // Global variables
 unsigned long timeNow = 0; // this should take several days before running over
-int engineState = SELF_TEST; // state the engine micro controller is operating in
+int engineState = ERROR; // state the engine micro controller is operating in
 unsigned long period = 500; // the period for the steper motor pulse
 unsigned long pulseTimer = 0; // the timer to check the stepper motor pulse
 int valveStepCount = 0; // the number of steps from home the valve stepper is
@@ -89,6 +89,16 @@ int test_counter = 0;
 int error_self_test_once = 0;
 int error_message_control = 0;
 
+
+
+// Angular/count padding on either side of 
+// the topdead and bottomdead center positions. 
+// (Exhaust region)
+int deadZone = 100;
+// How many steps before the deadzones should the cylinder
+// epand for?
+int expandZone = 600;
+int currentExpand = 0; 
 
 // How many samples do we use for finding the RPM?
 #define SPEED_SAMPLE_COUNT 3 
@@ -111,6 +121,9 @@ void enc_ch_a();
 void enc_ch_b();
 void enc_ch_z();
 void calculate_rpm();
+
+void valve_reverse_control(int angle, bool expansion);
+void valve_forward_control(int angle, bool expansion);
 
 // Set up loop
 void setup() {
@@ -142,14 +155,16 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(ENCODER_Z), enc_ch_z, RISING);
   pinMode(ENCODER_B, INPUT); // used in checking the dirction of turn of the engine. 
 
+
+  delay(5000); // please delete me
 } // END OF SET UP LOOP
 
+// temporary variable so that the controller 
+// can enable and disable experimental expansion 
+// timing 
+bool expansionEnabled = false; 
 
 void loop() { // start of main loop
-  // temporary variable so that the controller 
-  // can enable and disable experimental expansion 
-  // timing 
-  bool expansionEnabled = false; 
 
   // Update Time at start of Loop
   timeNow = millis();
@@ -188,7 +203,7 @@ void loop() { // start of main loop
         Serial.print("OK\n");
         Serial.flush();
         break; 
-      case 'K'
+      case 'K':
         if(engineState == ERROR && error_message_control == 1){
           // Test Condition Made Section
           if(test_counter == 0){
@@ -206,6 +221,7 @@ void loop() { // start of main loop
           }
         }
       case 's': solenoidDirection = STOP; // Stop engine
+        currentExpand = 0;
         break; 
       case 'f': solenoidDirection = FORWARD; // Forward engine
         break; 
@@ -280,18 +296,15 @@ void loop() { // start of main loop
     // change the solenoid valves as programmed
     if(solenoidDirection == 1){
       // Stop valve timing
-      EX_SOL_2_ON;
-      EX_SOL_4_ON;
-      EX_SOL_6_ON;
-      EX_SOL_8_ON;
+      // do nothing
     
     } else if(solenoidDirection == 2){
       // Start in forward condition
-      valve_forward_control(angle_countA, true, expansionEnabled);
+      valve_forward_control(angle_countA, expansionEnabled);
     
     } else if(solenoidDirection == 3){
       // Start in reverse condition
-      valve_reverse_control(angle_countA, false, expansionEnabled);
+      valve_reverse_control(angle_countA, expansionEnabled);
     }
     
     // call the appropriate step direction for the flow controller
@@ -377,8 +390,14 @@ void enc_ch_a(){
   // If this function has been called then channel A has encountered a rising edge. 
   if(!READ_B){
     angle_countA++; // if forward direction increment
+
+    if(angle_countA > 2048)
+      angle_countA -= 2048;
   } else{
     angle_countA--; // if reverse direction decrement
+    
+    if(angle_countA < 0)
+      angle_countA += 2048;
   }
   // if the forward valve control loop appears to have broken then remove the ! operator from the if statement
   // this should swap the increment and decrement case, fixing things. 
@@ -404,6 +423,9 @@ void enc_ch_z(){
   speedSamples[SPEED_SAMPLE_COUNT-1] = now - lastSample; 
   lastSample = now;
   
+  if(currentExpand < expandZone)
+    currentExpand += 100;
+
    // McGuinness, John J. 
    // ISR to handle encoder channel Z
    // Note that this channel only has to be used once immediately after power up once the engine has cycled one time.
@@ -483,13 +505,6 @@ EX_SOL_6_ON;\
 IN_SOL_7_OFF; \
 EX_SOL_8_OFF; }
 
-// Angular/count padding on either side of 
-// the topdead and bottomdead center positions. 
-// (Exhaust region)
-int deadZone = 100;
-// How many steps before the deadzones should the cylinder
-// epand for?
-int expandZone = 100;
 
 // Valve Timing Function 
 // 'angle': the current angle in steps, 0-2048
@@ -503,9 +518,9 @@ void valve_forward_control(int angle, bool expansionMode)
   if(angle > 0 && angle < deadZone) {
     // Deadzone before admitting 
     P1_EXHAUST;
-  } else if(angle > deadZone && angle < 1024-deadZone-expandZone) {
+  } else if(angle > deadZone && angle < 1024-deadZone-currentExpand) {
     P1_ADMIT_FWD;
-  } else if(angle > 1024-deadZone-expandZone && angle < 1024-deadZone) {
+  } else if(angle > 1024-deadZone-currentExpand && angle < 1024-deadZone) {
     if(expansionMode) {
       P1_EXPAND_FWD;
     } else {
@@ -515,10 +530,10 @@ void valve_forward_control(int angle, bool expansionMode)
   } else if(angle > 1024-deadZone && angle < 1024+deadZone) {
     // Bottom deadzone 
     P1_EXHAUST; 
-  } else if(angle > 1024+deadZone && angle < 2048-deadZone-expandZone) {
+  } else if(angle > 1024+deadZone && angle < 2048-deadZone-currentExpand) {
     // Second admission region, needs to be the opposite of the first.
     P1_ADMIT_REV; 
-  } else if(angle > 2048-deadZone-expandZone && angle < 2048-deadZone) {
+  } else if(angle > 2048-deadZone-currentExpand && angle < 2048-deadZone) {
     // Second expansion region, do we try? 
     // Make sure direction matches previous phase.
     if(expansionMode) {
@@ -532,10 +547,10 @@ void valve_forward_control(int angle, bool expansionMode)
   if(phasedAngle > 0 && phasedAngle < deadZone) {
     // Deadzone before admitting 
     P2_EXHAUST;
-  } else if(phasedAngle > deadZone && phasedAngle < 1024-deadZone-expandZone) {
+  } else if(phasedAngle > deadZone && phasedAngle < 1024-deadZone-currentExpand) {
     // First admission region 
     P2_ADMIT_FWD;
-  } else if(phasedAngle > 1024-deadZone-expandZone && phasedAngle < 1024-deadZone) {
+  } else if(phasedAngle > 1024-deadZone-currentExpand && phasedAngle < 1024-deadZone) {
     // First expansion region, do we try?
     if(expansionMode) {
       P2_EXPAND_FWD;
@@ -545,10 +560,10 @@ void valve_forward_control(int angle, bool expansionMode)
   } else if(phasedAngle > 1024-deadZone && phasedAngle < 1024+deadZone) {
     // Bottom deadzone 
     P2_EXHAUST; 
-  } else if(phasedAngle > 1024+deadZone && phasedAngle < 2048-deadZone-expandZone) {
+  } else if(phasedAngle > 1024+deadZone && phasedAngle < 2048-deadZone-currentExpand) {
     // Second admission region, needs to be the opposite of the first.
     P2_ADMIT_REV; 
-  } else if(phasedAngle > 2048-deadZone-expandZone && phasedAngle < 2048-deadZone) {
+  } else if(phasedAngle > 2048-deadZone-currentExpand && phasedAngle < 2048-deadZone) {
     // Second expansion region, do we try? 
     // Make sure direction matches previous phase.
     if(expansionMode) {
@@ -559,7 +574,7 @@ void valve_forward_control(int angle, bool expansionMode)
   }
 }
 
-void reverse_valve_control(int angle, bool expansionMode)
+void valve_reverse_control(int angle, bool expansionMode)
 {
   int phasedAngle = angle - 512; // 90 degrees lead
   if(phasedAngle < 0) phasedAngle += 2048; // wrap value if over 2048
