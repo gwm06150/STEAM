@@ -30,9 +30,8 @@
   
 
 // Define State Names
-#define SELF_TEST 0
+#define ERROR 0
 #define LISTEN 1
-#define FAULT 2
 
 // Define Values
 #define PULSEWIDTH 1 // set in milliseconds
@@ -71,7 +70,7 @@
 
 // Global variables
 unsigned long timeNow = 0; // this should take several days before running over
-int engineState = LISTEN; // state the engine micro controller is operating in
+int engineState = SELF_TEST; // state the engine micro controller is operating in
 unsigned long period = 500; // the period for the steper motor pulse
 unsigned long pulseTimer = 0; // the timer to check the stepper motor pulse
 int valveStepCount = 0; // the number of steps from home the valve stepper is
@@ -80,13 +79,15 @@ int solenoidState = 0; // is the solenoid triggered or not
 unsigned long solenoidTimer = 0; // checks the length of time that the solenoid has been open
 int valvePositionSet = 0; // the step count to which the flow controller valve has been set
 int valvePositionActual = 0; // the position that the flow controller is at currently
-int solenoidDirection = 1; // the direction in which the solenoids are being fired
+int solenoidDirection = STOP; // the direction in which the solenoids are being fired
 char serialBuffer[50] = ""; // the buffer for serial communication with the pendant controller
 unsigned int serialIndex = 0; // the index tracker for the serial buffer
-
 volatile int angle_countA = 0; // the counter that keeps track of the angle of the engine A
 volatile int angle_countB = 0; // the counter that keeps track of the angle of the engine B
 volatile int loop_count = 0; // counts the number of whole loops
+int test_counter = 0;
+int error_self_test_once = 0;
+int error_message_control = 0;
 
 
 // How many samples do we use for finding the RPM?
@@ -153,9 +154,9 @@ void loop() { // start of main loop
   // Update Time at start of Loop
   timeNow = millis();
 
+  // calculate the RPM of engine and update
   if(timeNow > nextRpmReadout) {
     char buffer[6] = "";
-
     // reset timer 
     nextRpmReadout = timeNow + TIME_BETWEEN_READOUTS;
     // recalculate RPM 
@@ -187,6 +188,23 @@ void loop() { // start of main loop
         Serial.print("OK\n");
         Serial.flush();
         break; 
+      case 'K'
+        if(engineState == ERROR && error_message_control == 1){
+          // Test Condition Made Section
+          if(test_counter == 0){
+            ENABLE_FLOW_CONTROLLER;
+            test_counter = 1;
+          } 
+          
+          if(test_counter == 1){
+            if (loop_count > 0) {
+              engineState = LISTEN;
+            }
+      
+             error_message_control = 0;
+            
+          }
+        }
       case 's': solenoidDirection = STOP; // Stop engine
         break; 
       case 'f': solenoidDirection = FORWARD; // Forward engine
@@ -223,30 +241,40 @@ void loop() { // start of main loop
     }
   } // END OF SERIAL SECTION
 
-  if (engineState == SELF_TEST){ // *** START OF SEFL TEST ***
+  if (engineState == ERROR){ // *** START OF SELF TEST ***
     // Set UP and Test Engine
-    // Check that the engine has supply pressure
-
-    // Prompt the user to check that the flow controller is gently closed,
-    // wait for the user to confirm the closure
-    ENABLE_FLOW_CONTROLLER
-    DISABLE_FLOW_CONTROLLER
     
-    // Open the exhaust valves for all cylinders
-    // Prompt the user to begin to the homing operation
-    // "Clear engine area" 
-    // Cycle the engine with fixed timing one time. 
+    // disable the stepper motor motor in the flow controller to home it.
+    if(error_self_test_once == 0){
+      // diable the flow controller and open the exhaust valves to allow the engine to spin
+      // only run this at start up
+      DISABLE_FLOW_CONTROLLER;
+      EX_SOL_2_ON;
+      EX_SOL_4_ON;
+      EX_SOL_6_ON;
+      EX_SOL_8_ON;
+      error_self_test_once = 1;
+    } 
+
+    // Message Sender Section:
+    if(test_counter == 0 && error_message_control == 0){
+      // send the message to close the flow controller
+      Serial.print("E");
+      Serial.print("Home FC:");
+      Serial.print("\n");
+      Serial.flush();
+      error_message_control = 1;
+
+    } else if(test_counter == 1 && error_message_control == 0){
+      // set the message to spin the engine
+      Serial.print("E");
+      Serial.print("Home Engine:");
+      Serial.print("\n");
+      Serial.flush();
+      error_message_control = 1;
+    }
 
   } // END OF SELF TEST STATE
-
-
-  if (engineState == FAULT){ // *** START OF FAULT ***
-    // Wait until the controller prompts to move back to self test
-    // If controller prompts, move to self test
-
-    // else, just wait
-
-  } // END OF FAULT STATE
 
   if (engineState == LISTEN){ // *** START OF LISTEN ***
     // change the solenoid valves as programmed
