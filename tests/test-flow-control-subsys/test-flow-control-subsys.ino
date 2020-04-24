@@ -14,14 +14,14 @@
   #define MOTOR_ENABLE 51 // pin to controll enable/disable for stepper in flow controller
   
   // Solenoids
-  #define SOL_1 31 // first solenoid
-  #define SOL_2 33 // second solenoid
-  #define SOL_3 35 // third solenoid
-  #define SOL_4 37 // forth solenoid
-  #define SOL_5 39 // fifth solenoid
-  #define SOL_6 41 // sixth solenoid
-  #define SOL_7 43 // seventh solenoid
-  #define SOL_8 45 // eight solenoid
+  #define SOL_8 31 // first solenoid
+  #define SOL_7 33 // second solenoid
+  #define SOL_6 35 // third solenoid
+  #define SOL_5 37 // forth solenoid
+  #define SOL_4 39 // fifth solenoid
+  #define SOL_3 41 // sixth solenoid
+  #define SOL_2 43 // seventh solenoid
+  #define SOL_1 45 // eight solenoid
   
   // Engine encoder pins
   #define ENCODER_A 19 // encoder interupt 1, signal
