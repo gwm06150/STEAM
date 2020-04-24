@@ -6,7 +6,7 @@
 bool setup_comms(void);
 
 // Sends a speed-change command over serial. 
-void send_speed_cmd(unsigned char speed);
+void send_speed_cmd(int speed);
 
 // Sends the appropriate command for stopping,
 // reversing, or forward operation.

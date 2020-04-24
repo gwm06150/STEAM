@@ -8,7 +8,7 @@ bool setup_comms(void)
   return true;
 }
 
-void send_speed_cmd(unsigned char speed)
+void send_speed_cmd(int speed)
 {
   // create string containing speed number
   char num[4] = "";
@@ -43,5 +43,6 @@ void send_speed_mode(unsigned char mode)
 void send_expansion_mode(bool enabled)
 {
   Serial.print(enabled?"E":"e");
+  Serial.print("\n");
   Serial.flush();
 }

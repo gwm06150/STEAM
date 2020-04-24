@@ -12,7 +12,7 @@ static unsigned int nextMenuState = MENU_UNINITIALIZED;
 
 // speed control state variables 
 static unsigned char speedMode = SPEED_STOPPED;
-static unsigned short speedSetting = 0;
+static short speedSetting = 0;
 
 static char serialBuffer[50];
 static unsigned int serialIndex = 0;
