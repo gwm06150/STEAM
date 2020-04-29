@@ -6,9 +6,13 @@
 #include <string.h>
 
 #define MAX_FLOW_SET 500
+#define MAX_ERROR_MSG 14
 
-static unsigned int menuState = MENU_UNINITIALIZED;
+static unsigned int menuState = MENU_\UNINITIALIZED;
 static unsigned int nextMenuState = MENU_UNINITIALIZED;
+
+// error state variables 
+static char errorMessage[MAX_ERROR_MSG] = "";
 
 // speed control state variables 
 static unsigned char speedMode = SPEED_STOPPED;
@@ -79,29 +83,54 @@ void loop()
       } else if(serialBuffer[0] == 'N' && serialBuffer[1] == 'G') {
         set_display_rgb(255,255,0);
         delay(50);
-      } else if(serialBuffer[0] == 'S') {
-        // we're receiving an RPM
-        int conversion = -1;
-        conversion = atoi(serialBuffer+1);
+      } else {
+        switch(serialBuffer[0]) {
 
-        // was the conversion successful?
-        if(conversion != -1) {
-          if(menuState == MENU_SETSPEED_VFC || menuState == MENU_SETSPEED_VVT){ 
-            char speed[4] = "";
-            
-            if(conversion < 999) 
-              itoa(conversion, speed, 10);
-            else {
-              // display error speed if its greater than 999..
-              // this shouldnt happen unless there was a glitch or 
-              // our engine is actually good
-              strcpy(speed, "XXX");
+          case 'S': 
+            {
+              // we're receiving an RPM
+              int conversion = -1;
+              conversion = atoi(serialBuffer+1);
+
+              // was the conversion successful?
+              if(conversion != -1) {
+                if(menuState == MENU_SETSPEED_VFC || menuState == MENU_SETSPEED_VVT){ 
+                  char speed[4] = "";
+                  
+                  if(conversion < 999) 
+                    itoa(conversion, speed, 10);
+                  else {
+                    // display error speed if its greater than 999..
+                    // this shouldnt happen unless there was a glitch or 
+                    // our engine is actually good
+                    strcpy(speed, "XXX");
+                  }
+
+                  display_write("   ", 5, 0);
+                  display_write(speed, 5, 0);
+                  
+                }
+              }
+            } 
+            break;
+          case 'E':
+            {
+              int i = 1;
+
+              for(i = 1; serialBuffer[i] && serialBuffer[i] != '\n' && i < MAX_ERROR_MSG-1; i++){
+                errorMessage[i-1] = serialBuffer[i];      
+              }
+
+              errorMessage[i+1] = '\0';
+
+              // stop the engine just in case 
+              send_speed_mode(SPEED_STOPPED);
+              speedMode = SPEED_STOPPED;
+
+              menuState = MENU_DEBUG;
+              nextMenuState = MENU_ERROR;
             }
-
-            display_write("   ", 5, 0);
-            display_write(speed, 5, 0);
-            
-          }
+            break;
         }
       }
 
@@ -115,6 +144,14 @@ void loop()
     menuState = nextMenuState;
 
     switch(menuState) {
+
+    case MENU_ERROR: 
+      display_clear();
+      set_display_rgb(24,40,0);
+      display_write(errorMessage, 0, 0);
+      display_write("Knob to confirm", 0, 1);
+      break;
+
     case MENU_SELECT_MODE:
       display_clear();
       display_write("  SELECT  MODE  ", 0, 0);
@@ -217,6 +254,10 @@ void loop()
   // check if the encoder has been pressed 
   if(check_encoder_pushbutton()) {
     switch(menuState){ 
+    case MENU_ERROR: 
+      nextMenuState = MENU_SELECT_MODE;
+      send_ok();
+      break; 
     case MENU_DEBUG:
       display_clear();
       display_write("Knob pressed.", 0, 0);

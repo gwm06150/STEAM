@@ -22,6 +22,13 @@ void send_speed_cmd(int speed)
   Serial.flush();
 }
 
+void send_ok(void)
+{
+  Serial.print("K");
+  Serial.print("\n");
+  Serial.flush();
+}
+
 void send_speed_mode(unsigned char mode)
 {
   // depending on the speed mode, send a lowercase f, r, or s.
