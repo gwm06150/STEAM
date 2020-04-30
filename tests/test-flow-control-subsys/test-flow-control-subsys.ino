@@ -506,11 +506,12 @@ IN_SOL_7_OFF; \
 EX_SOL_8_OFF; }
 
 
-// Valve Timing Function 
-// 'angle': the current angle in steps, 0-2048
-// 'expansionMode': should we try to expand to maximize efficiency? (temp, experimental)
+
 void valve_forward_control(int angle, bool expansionMode) 
 {
+  // Valve Timing Function 
+  // 'angle': the current angle in steps, 0-2048
+  // 'expansionMode': should we try to expand to maximize efficiency? (temp, experimental)
   int phasedAngle = angle - 512; // 90 degrees lead
   if(phasedAngle < 0) phasedAngle += 2048; // wrap value if over 2048
 
@@ -576,10 +577,37 @@ void valve_forward_control(int angle, bool expansionMode)
 
 void valve_reverse_control(int angle, bool expansionMode)
 {
-  int phasedAngle = angle - 512; // 90 degrees lead
-  if(phasedAngle < 0) phasedAngle += 2048; // wrap value if over 2048
+  // Angle Phasing and Wrapping for Piston 2
 
-  // TODO
+  // Piston 1
+  if(1){
+    P1_ADMIT_REV;
+  } else if (1){
+    P1_EXPAND_REV;
+  } else if(1){
+    P1_EXHAUST;
+  } else if(1){
+    P1_ADMIT_FWD;
+  } else if(1){
+    P1_EXPAND_FWD;
+  } else if(1){
+    P1_EXHAUST;
+  }
+
+  // Piston 2
+    if(1){
+    P2_ADMIT_REV;
+  } else if (1){
+    P2_EXPAND_REV;
+  } else if(1){
+    P2_EXHAUST;
+  } else if(1){
+    P2_ADMIT_FWD;
+  } else if(1){
+    P2_EXPAND_FWD;
+  } else if(1){
+    P2_EXHAUST;
+  }
 }
 
 
