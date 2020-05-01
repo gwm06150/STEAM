@@ -12,6 +12,7 @@
   #define PIN_DIR 47 // set pin high to close valve, flow controller servo direction
   #define PIN_STEP 49 // pin to step flow controller servo
   #define MOTOR_ENABLE 51 // pin to controll enable/disable for stepper in flow controller
+
   
   // Solenoids
   #define SOL_8 31 
@@ -60,9 +61,77 @@
   #define EX_SOL_6_OFF digitalWrite(SOL_6, LOW); // sixth solenoid close
   #define IN_SOL_7_OFF digitalWrite(SOL_7, LOW); // seventh solenoid close
   #define EX_SOL_8_OFF digitalWrite(SOL_8, LOW); // eigth solenoid close
+  #define P1_ADMIT_FWD {\
+  IN_SOL_1_ON;  \
+  EX_SOL_2_OFF; \
+  IN_SOL_3_OFF; \
+  EX_SOL_4_ON; }
+
+  #define P1_EXPAND_FWD { \
+  IN_SOL_1_OFF;\
+  EX_SOL_2_OFF;\
+  IN_SOL_3_OFF; \
+  EX_SOL_4_ON; }
+
+  #define P1_EXHAUST { \
+  IN_SOL_1_OFF;\
+  EX_SOL_2_ON;\
+  IN_SOL_3_OFF; \
+  EX_SOL_4_ON; }
+
+  #define P1_ADMIT_REV { \
+  IN_SOL_1_OFF;\
+  EX_SOL_2_ON;\
+  IN_SOL_3_ON; \
+  EX_SOL_4_OFF; }
+
+  #define P1_EXPAND_REV { \
+  IN_SOL_1_OFF;\
+  EX_SOL_2_ON;\
+  IN_SOL_3_OFF; \
+  EX_SOL_4_OFF; }
+
+
+
+  #define P2_ADMIT_FWD { \
+  IN_SOL_5_ON;  \
+  EX_SOL_6_OFF; \
+  IN_SOL_7_OFF; \
+  EX_SOL_8_ON; } 
+
+  #define P2_EXPAND_FWD { \
+  IN_SOL_5_OFF;\
+  EX_SOL_6_OFF;\
+  IN_SOL_7_OFF; \
+  EX_SOL_8_ON; }
+
+  #define P2_EXHAUST { \
+  IN_SOL_5_OFF;\
+  EX_SOL_6_ON;\
+  IN_SOL_7_OFF; \
+  EX_SOL_8_ON; }
+
+  #define P2_ADMIT_REV { \
+  IN_SOL_5_OFF;\
+  EX_SOL_6_ON;\
+  IN_SOL_7_ON; \
+  EX_SOL_8_OFF; }
+
+  #define P2_EXPAND_REV { \
+  IN_SOL_5_OFF;\
+  EX_SOL_6_ON;\
+  IN_SOL_7_OFF; \
+  EX_SOL_8_OFF; }
+
+  // WHISTLE DEFINES
+  #define WHISTLE_TOOT 500 // In miliseconds for a short note 
+  #define WHISTLE_PULL 1500 // In miliseconds for a short note
+  #define WHISTLE_PIN 42 // pin to fire the whistl on or off 
+  #define WHISTLE_ON digitalWrite(WHISTLE_PIN, HIGH) // turn the whistle on
+  #define WHISTLE_OFF digitalWrite(WHISTLE_PIN, LOW) // turn the whistle off
 
   // ENCODER BIT READER
-  #define READ_B digitalRead(ENCODER_B) // check the logical state of encoder channel B
+  #define READ_B bitRead(PORTD, enc_ch_b) // check the logical state of encoder channel B
 
   // STEPPER STUFF
   #define DISABLE_FLOW_CONTROLLER digitalWrite(MOTOR_ENABLE, HIGH) // diable the stepper motor to allow manual adjustment
@@ -80,6 +149,7 @@ unsigned long solenoidTimer = 0; // checks the length of time that the solenoid 
 int valvePositionSet = 0; // the step count to which the flow controller valve has been set
 int valvePositionActual = 0; // the position that the flow controller is at currently
 int solenoidDirection = STOP; // the direction in which the solenoids are being fired
+int lastSolenoidDirection = STOP; // keeps track for use with the whistle flags
 char serialBuffer[50] = ""; // the buffer for serial communication with the pendant controller
 unsigned int serialIndex = 0; // the index tracker for the serial buffer
 volatile int angle_countA = 0; // the counter that keeps track of the angle of the engine A
@@ -88,9 +158,6 @@ volatile int loop_count = 0; // counts the number of whole loops
 int test_counter = 0;
 int error_self_test_once = 0;
 int error_message_control = 0;
-
-
-
 // Angular/count padding on either side of 
 // the topdead and bottomdead center positions. 
 // (Exhaust region)
@@ -99,6 +166,13 @@ int deadZone = 100;
 // epand for?
 int expandZone = 600;
 int currentExpand = 0; 
+int admitime = 0;
+// whistle stuff
+int whistleForwardHandler = 0;
+int whistleReverseHandler = 0;
+int whistleStopHandler = 0;
+int whistleEnabled = 0;
+int whistleTimer = 0;
 
 // How many samples do we use for finding the RPM?
 #define SPEED_SAMPLE_COUNT 3 
@@ -125,6 +199,10 @@ void calculate_rpm();
 void valve_reverse_control(int angle, bool expansion);
 void valve_forward_control(int angle, bool expansion);
 
+void whistle_engine_forward();
+void whistle_engine_reverse();
+void whistle_engine_stop();
+
 // Set up loop
 void setup() {
   // Set up the serial coms at 9600 baud
@@ -134,6 +212,9 @@ void setup() {
   pinMode(PIN_DIR, OUTPUT);
   pinMode(PIN_STEP, OUTPUT);
   pinMode(MOTOR_ENABLE, OUTPUT);
+
+  // Pins for the whistle
+  pinMode(WHISTLE_PIN, OUTPUT);
 
  // Pins for engine solenoids
   pinMode(SOL_1, OUTPUT);
@@ -293,16 +374,15 @@ void loop() { // start of main loop
   } // END OF SELF TEST STATE
 
   if (engineState == LISTEN){ // *** START OF LISTEN ***
-    // change the solenoid valves as programmed
-    if(solenoidDirection == 1){
-      // Stop valve timing
-      // do nothing
     
-    } else if(solenoidDirection == 2){
+    // change the running direction of the engine
+    if(solenoidDirection == STOP){
+      // Stop valve timingS
+      // do nothing
+    } else if(solenoidDirection == FORWARD){
       // Start in forward condition
       valve_forward_control(angle_countA, expansionEnabled);
-    
-    } else if(solenoidDirection == 3){
+    } else if(solenoidDirection == REVERSE){
       // Start in reverse condition
       valve_reverse_control(angle_countA, expansionEnabled);
     }
@@ -311,14 +391,54 @@ void loop() { // start of main loop
     if(valvePositionSet > valveStepCount){
       // Open the valve to the set point
       stepFlowValveOpen();
-    
     } else if(valvePositionSet < valveStepCount){
       // Close the valve to the set point
       stepFlowValveClosed();
-    
     } else if(valvePositionSet == valveStepCount){
       // Do nothing
     }
+
+    // set the appropriate flag for the whistle
+    if(whistleEnabled == 1){
+      if((lastSolenoidDirection == FORWARD || lastSolenoidDirection == REVERSE) && solenoidDirection == STOP){
+        // sound the stop signal 
+        whistleStopHandler = 1;
+        whistleReverseHandler = 0;
+        whistleForwardHandler = 0;
+        whistleTimer = timeNow;
+      } else if(lastSolenoidDirection == STOP && solenoidDirection == FORWARD){
+        // sound the forward signal
+        whistleForwardHandler = 1;
+        whistleReverseHandler = 0;
+        whistleStopHandler = 0;
+        whistleTimer = timeNow;
+      } else if(lastSolenoidDirection == STOP && solenoidDirection == REVERSE){
+        // sound the reverse signal
+        whistleReverseHandler = 1;
+        whistleForwardHandler = 0;
+        whistleStopHandler = 0;
+        whistleTimer = timeNow;
+      }
+      // calling the whistle functions as needed.
+      if(whistleForwardHandler == 1){
+        // call the forward whistle function
+        whistle_engine_forward();
+     } else if(whistleReverseHandler == 0){ 
+        // call the reverse whistle function
+        whistle_engine_reverse();
+     } else if(whistleStopHandler == 1){
+        // call the stop whistle handler
+        whistle_engine_stop();
+    }
+
+    lastSolenoidDirection = solenoidDirection;
+    
+    }
+
+
+
+
+    // 
   } // END OF LISTEN STATE
 } // end of loop
 
@@ -443,70 +563,6 @@ void enc_ch_z(){
 
 } // END OF ENC_CH_Z
 
-#define P1_ADMIT_FWD {\
-IN_SOL_1_ON;  \
-EX_SOL_2_OFF; \
-IN_SOL_3_OFF; \
-EX_SOL_4_ON; }
-
-#define P1_EXPAND_FWD { \
-IN_SOL_1_OFF;\
-EX_SOL_2_OFF;\
-IN_SOL_3_OFF; \
-EX_SOL_4_ON; }
-
-#define P1_EXHAUST { \
-IN_SOL_1_OFF;\
-EX_SOL_2_ON;\
-IN_SOL_3_OFF; \
-EX_SOL_4_ON; }
-
-#define P1_ADMIT_REV { \
-IN_SOL_1_OFF;\
-EX_SOL_2_ON;\
-IN_SOL_3_ON; \
-EX_SOL_4_OFF; }
-
-#define P1_EXPAND_REV { \
-IN_SOL_1_OFF;\
-EX_SOL_2_ON;\
-IN_SOL_3_OFF; \
-EX_SOL_4_OFF; }
-
-
-
-#define P2_ADMIT_FWD { \
-IN_SOL_5_ON;  \
-EX_SOL_6_OFF; \
-IN_SOL_7_OFF; \
-EX_SOL_8_ON; } 
-
-#define P2_EXPAND_FWD { \
-IN_SOL_5_OFF;\
-EX_SOL_6_OFF;\
-IN_SOL_7_OFF; \
-EX_SOL_8_ON; }
-
-#define P2_EXHAUST { \
-IN_SOL_5_OFF;\
-EX_SOL_6_ON;\
-IN_SOL_7_OFF; \
-EX_SOL_8_ON; }
-
-#define P2_ADMIT_REV { \
-IN_SOL_5_OFF;\
-EX_SOL_6_ON;\
-IN_SOL_7_ON; \
-EX_SOL_8_OFF; }
-
-#define P2_EXPAND_REV { \
-IN_SOL_5_OFF;\
-EX_SOL_6_ON;\
-IN_SOL_7_OFF; \
-EX_SOL_8_OFF; }
-
-
-
 void valve_forward_control(int angle, bool expansionMode) 
 {
   // Valve Timing Function 
@@ -576,100 +632,43 @@ void valve_forward_control(int angle, bool expansionMode)
 }
 
 void valve_reverse_control(int angle, bool expansionMode)
-{
+{ 
+  // calulate the admission time (This makes thing easier for John)
+  admitime = 1024 - deadZone - currentExpand;
+
   // Angle Phasing and Wrapping for Piston 2
+  int phasedAngle = angle - 512; // 90 degrees lead
+  if(phasedAngle < 0) phasedAngle += 2048; // wrap value if over 2048
 
   // Piston 1
-  if(1){
-    P1_ADMIT_REV;
-  } else if (1){
-    P1_EXPAND_REV;
-  } else if(1){
+  if(2048 < angle && angle > (2048-1024-deadZone)){
     P1_EXHAUST;
-  } else if(1){
+  } else if((2048-1024-deadZone) < angle && angle > (2048-1024-deadZone-admitime)){
     P1_ADMIT_FWD;
-  } else if(1){
+  } else if((2048-1024-deadZone-admitime) < angle && angle > 1024){
     P1_EXPAND_FWD;
-  } else if(1){
+  } else if(1024 < angle && angle > (1024-deadZone)){
     P1_EXHAUST;
+  } else if((1024-deadZone) > angle && angle > (1024-deadZone-admitime)){
+    P1_ADMIT_REV;
+  } else if((1024-deadZone-admitime) < angle && angle > 0){
+    P1_EXPAND_REV;
   }
 
   // Piston 2
-    if(1){
-    P2_ADMIT_REV;
-  } else if (1){
-    P2_EXPAND_REV;
-  } else if(1){
+    if(2048 < phasedAngle && phasedAngle > (2048-1024-deadZone)){
     P2_EXHAUST;
-  } else if(1){
+  } else if((2048-1024-deadZone) < phasedAngle && phasedAngle > (2048-1024-deadZone-admitime)){
     P2_ADMIT_FWD;
-  } else if(1){
+  } else if((2048-1024-deadZone-admitime) < phasedAngle && phasedAngle > 1024){
     P2_EXPAND_FWD;
-  } else if(1){
+  } else if(1024 < phasedAngle && phasedAngle > (1024-deadZone)){
     P2_EXHAUST;
+  } else if((1024-deadZone) > phasedAngle && phasedAngle > (1024-deadZone-admitime)){
+    P2_ADMIT_REV;
+  } else if((1024-deadZone-admitime) < phasedAngle && phasedAngle > 0){
+    P2_EXPAND_REV;
   }
-}
-
-
-// void forward_valve_control(){
-//   int phasedCount = angle_countA - 512; // 90 degrees lead
-//   if(phasedCount < 0) phasedCount += 2048; // wrap value if over 2048
-  
-//   // top half
-//   if(angle_countA > 300 && angle_countA < inAngle){
-//     // admitting air
-//     P1_ADMIT_FWD;
-
-//   } else if(angle_countA > inAngle && angle_countA < woAngle){
-//     // expanding/working air
-//     P1_EXPAND_FWD;
-
-//   } else if(angle_countA > woAngle && angle_countA < 1024){
-//     // exhausting air
-//     P1_EXHAUST_FWD;
-  
-//   } else if((angle_countA - 1024) < inAngle){ // TODO: adjust for piston diameter difference
-//     // admitting air
-//     P1_ADMIT_REV;
-
-//   } else if((angle_countA - 1024) > inAngle && (angle_countA - 1024) < woAngle){
-//     // expanding/working air
-//     P1_EXPAND_REV;
-
-//   } else if((angle_countA - 1024) > woAngle){
-//     // exhausting air
-//     P1_EXHAUST_REV;
-//   }
-
-//   // top half
-//   if(phasedCount > 300 && phasedCount < inAngle){
-//     // admitting air
-//     P2_ADMIT_REV;
-
-//   } else if(phasedCount > inAngle && phasedCount < woAngle){
-//     // expanding/working air
-//     P2_EXPAND_REV;
-
-//   } else if(phasedCount > woAngle && phasedCount < 1024){
-//     // exhausting air
-//     P2_EXHAUST_REV;
-  
-//   } else if((phasedCount - 1024) < inAngle){ // TODO: adjust for piston diameter difference
-//     // admitting air
-//     P2_ADMIT_FWD;
-
-//   } else if((phasedCount - 1024) > inAngle && (phasedCount - 1024) < woAngle){
-//     // expanding/working air
-//     P2_EXPAND_FWD;
-
-//   } else if((phasedCount - 1024) > woAngle){
-//     // exhausting air
-//     P2_EXHAUST_FWD;
-//   }
-
-// }
-
-void reverse_valve_control(){
 
 }
 
@@ -694,31 +693,61 @@ void calculate_rpm(void)
   }
 }
 
-void solenoidValveTiming(){
-  // McGuinness, John J.
-  if(solenoidState == 0 && ((timeNow - solenoidTimer) >= VALVESWITCHTIME)){
-    // start by firing solenoid 1
-    digitalWrite(SOL_1, HIGH);
-    digitalWrite(SOL_2, LOW);
-    digitalWrite(SOL_3, LOW);
-    digitalWrite(SOL_4, HIGH);
-    
-    // update the solenoid timer
-    solenoidTimer = timeNow;
-
-    // update the solenoid state
-    solenoidState = 1;
-  } else if(solenoidState == 1 && ((timeNow - solenoidTimer) >= VALVESWITCHTIME)){
-    // start by firing solenoid 1
-    digitalWrite(SOL_1, LOW);
-    digitalWrite(SOL_2, HIGH);
-    digitalWrite(SOL_3, HIGH);
-    digitalWrite(SOL_4, LOW);
-
-    // update the solenoid timer
-    solenoidTimer = timeNow;
-
-    // update the solenoid state
-    solenoidState = 0;
+void whistle_engine_forward(){
+  int delta = 0;
+  delta = timeNow - whistleTimer;
+  if(delta < 1000){
+    // on for 1 second
+    WHISTLE_ON;
+  } else if(delta > 1000 && delta < 1500){
+    // off for 0.5 seconds
+    WHISTLE_OFF;
+  } else if(delta > 1500 && delta < 2500){
+    // on for 1 second
+    WHISTLE_ON;
+  } else{
+    WHISTLE_OFF;
+    whistleForwardHandler = 0;
   }
-} // END OF SOLENOID VALVE TIMING
+  
+}
+
+
+void whistle_engine_stop(){
+  int delta = 0;
+  delta = timeNow - whistleTimer;
+  if(delta < 500){
+    // on for 0.5 seconds
+    WHISTLE_ON;
+  } else{
+    // off, and reset the handler
+    WHISTLE_OFF;
+    whistleStopHandler == 0;
+  }
+
+}
+
+void whistle_engine_reverse(){
+  int delta = 0;
+  delta = timeNow - whistleTimer;
+  if(delta < 1000){
+    // on for 1 second
+      WHISTLE_ON;
+  } else if(delta > 1000 && delta < 1500){
+    // off for 0.5 seconds
+    WHISTLE_OFF;
+  } else if(delta > 1500 && delta < 2500){
+    // on for 1 second
+    WHISTLE_ON;
+  } else if(delta > 2500 && delta < 3000){
+    // off for 0.5 seconds
+    WHISTLE_OFF;
+  } else if(delta > 3000 && delta < 4000){
+    // on for 1 second
+    WHISTLE_ON;
+  } else{
+    WHISTLE_OFF;
+    whistleReverseHandler = 0;
+  }
+}
+
