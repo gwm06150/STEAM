@@ -29,6 +29,13 @@ void send_ok(void)
   Serial.flush();
 }
 
+void send_probe(void)
+{
+  Serial.print("P");
+  Serial.print("\n");
+  Serial.flush();
+}
+
 void send_speed_mode(unsigned char mode)
 {
   // depending on the speed mode, send a lowercase f, r, or s.
@@ -52,4 +59,11 @@ void send_expansion_mode(bool enabled)
   Serial.print(enabled?"E":"e");
   Serial.print("\n");
   Serial.flush();
+}
+
+void send_whistle_mode(bool enabled)
+{
+  Serial.print(enabled?"W":"w");
+  Serial.print("\n");
+  Serial.flush(); 
 }

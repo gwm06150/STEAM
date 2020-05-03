@@ -15,7 +15,7 @@ static          bool          pulseHappened   = false;
 static          unsigned char lastButtons     = 0;
 // Switch related state 
 static          bool          lastSwitchState = false;
-
+static          bool          switchedOn = false, switchedOff = false;
 // Interrupt handler for B channel of encoder 
 static void encoder_B_pulse(void);
 
@@ -101,17 +101,44 @@ bool check_encoder_pushbutton(void)
   return false;
 }
 
-bool check_switch_on(void)
-{
-  if(lastSwitchState == false && is_switch_on())
-    return true; 
-
-  lastSwitchState = is_switch_on();
-}
-
-bool is_switch_on(void)
+static bool is_switch_on(void)
 {
   return digitalRead(MAIN_SWITCH) == LOW; 
+}
+
+void check_switch(void)
+{
+  bool currentState = is_switch_on();
+
+  if(lastSwitchState != currentState) {
+    if(currentState) {
+      switchedOn = true;
+    } else {
+      switchedOff = true; 
+    }
+  }
+
+  lastSwitchState = currentState;
+}
+
+bool switch_on(void) 
+{
+  if(switchedOn) {
+    switchedOn = false; 
+    return true; 
+  }
+
+  return false; 
+}
+
+bool switch_off(void) 
+{
+  if(switchedOff) {
+    switchedOff = false; 
+    return true; 
+  }
+
+  return false; 
 }
 
 

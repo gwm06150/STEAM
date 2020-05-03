@@ -16,10 +16,9 @@ void setup_buttons(void);
 
 // Checks if the switch changed state to on 
 // since last call.
-bool check_switch_on(void);
-
-// Return whether or not the switch is in the on position.
-bool is_switch_on(void); 
+void check_switch(void);
+bool switch_on(void);
+bool switch_off(void);
 
 // Reads the encoders position based on A/B quadrature.
 // returns: absolute position of encoder 

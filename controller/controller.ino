@@ -141,6 +141,11 @@ void loop()
 
   // manages state changing and state entry
   if(nextMenuState != menuState) {
+
+    if(menuState == MENU_UNINITIALIZED && nextMenuState == MENU_SELECT_MODE) {
+      send_probe();
+    }
+
     menuState = nextMenuState;
 
     switch(menuState) {
@@ -305,17 +310,26 @@ void loop()
     }
   }
 
+  check_switch(); 
+
   // check if the switch is on 
-  if(check_switch_on()) {
+  if(switch_on()) {
     switch(menuState) {
       case MENU_DEBUG: 
-        display_write("Switch on.", 0, 1);
+        display_write("Switch on.", 0, 0);
         break;
+      default: 
+        send_whistle_mode(true);
+        break; 
     }
-  } else {
+  } 
+  if(switch_off()) {
     switch(menuState) {
       case MENU_DEBUG: 
-        display_write("Switch off.", 0, 1);
+        display_write("Switch off.", 0, 0);
+        break;
+      default:
+        send_whistle_mode(false); 
         break;
     }
   }
