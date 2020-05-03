@@ -13,6 +13,8 @@ static          bool          wasGoingCW      = false;
 static          bool          pulseHappened   = false;
 // Auxiliary button related state 
 static          unsigned char lastButtons     = 0;
+// Switch related state 
+static          bool          lastSwitchState = false;
 
 // Interrupt handler for B channel of encoder 
 static void encoder_B_pulse(void);
@@ -45,6 +47,10 @@ void setup_buttons(void)
   pinMode(AUX_1, INPUT_PULLUP);
   pinMode(AUX_2, INPUT_PULLUP);
   pinMode(AUX_3, INPUT_PULLUP);
+
+  // set up the switch. it already 
+  // has a pullup.
+  pinMode(MAIN_SWITCH, INPUT);
 }
 
 
@@ -93,6 +99,19 @@ bool check_encoder_pushbutton(void)
   }
 
   return false;
+}
+
+bool check_switch_on(void)
+{
+  if(lastSwitchState == false && is_switch_on())
+    return true; 
+
+  lastSwitchState = is_switch_on();
+}
+
+bool is_switch_on(void)
+{
+  return digitalRead(MAIN_SWITCH) == LOW; 
 }
 
 

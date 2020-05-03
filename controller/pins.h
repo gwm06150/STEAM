@@ -24,4 +24,7 @@
 #define AUX_2                  A2 // middle, stop 
 #define AUX_3                  A3 // right, reverse
 
+// Whistle/power switch on side of controller
+#define MAIN_SWITCH            A4
+
 #endif//PINS_H

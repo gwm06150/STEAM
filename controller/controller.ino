@@ -8,7 +8,7 @@
 #define MAX_FLOW_SET 500
 #define MAX_ERROR_MSG 14
 
-static unsigned int menuState = MENU_\UNINITIALIZED;
+static unsigned int menuState = MENU_UNINITIALIZED;
 static unsigned int nextMenuState = MENU_UNINITIALIZED;
 
 // error state variables 
@@ -302,6 +302,21 @@ void loop()
       }
 
       break;
+    }
+  }
+
+  // check if the switch is on 
+  if(check_switch_on()) {
+    switch(menuState) {
+      case MENU_DEBUG: 
+        display_write("Switch on.", 0, 1);
+        break;
+    }
+  } else {
+    switch(menuState) {
+      case MENU_DEBUG: 
+        display_write("Switch off.", 0, 1);
+        break;
     }
   }
 

@@ -14,6 +14,13 @@ void setup_encoder(void);
 // Initializes the auxiliary buttons. 
 void setup_buttons(void);
 
+// Checks if the switch changed state to on 
+// since last call.
+bool check_switch_on(void);
+
+// Return whether or not the switch is in the on position.
+bool is_switch_on(void); 
+
 // Reads the encoders position based on A/B quadrature.
 // returns: absolute position of encoder 
 int read_encoder_position(void);
