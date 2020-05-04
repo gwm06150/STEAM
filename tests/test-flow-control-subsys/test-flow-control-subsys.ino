@@ -725,8 +725,8 @@ void whistle_engine_forward(){
 void whistle_engine_stop(){
   int delta = 0;
   delta = timeNow - whistleTimer;
-  if(delta < 500){
-    // on for 0.5 seconds
+  if(delta < 1500){
+    // on for 1.5 seconds
     WHISTLE_ON;
   } else{
     // off, and reset the handler
@@ -739,20 +739,20 @@ void whistle_engine_stop(){
 void whistle_engine_reverse(){
   int delta = 0;
   delta = timeNow - whistleTimer;
-  if(delta < 1000){
-    // on for 1 second
+  if(delta < 500){
+    // on for 0,5 second
       WHISTLE_ON;
+  } else if(delta >= 500 && delta < 1000){
+    // off for 0.5 seconds
+    WHISTLE_OFF;
   } else if(delta >= 1000 && delta < 1500){
-    // off for 0.5 seconds
-    WHISTLE_OFF;
-  } else if(delta >= 1500 && delta < 2500){
-    // on for 1 second
+    // on for 0.5 second
     WHISTLE_ON;
-  } else if(delta >= 2500 && delta < 3000){
+  } else if(delta >= 1500 && delta < 2000){
     // off for 0.5 seconds
     WHISTLE_OFF;
-  } else if(delta >= 3000 && delta < 4000){
-    // on for 1 second
+  } else if(delta >= 2000 && delta < 2500){
+    // on for 0.5 second
     WHISTLE_ON;
   } else{
     WHISTLE_OFF;
