@@ -33,6 +33,7 @@
 // Define State Names
 #define ERROR 0
 #define LISTEN 1
+#define SELF_TEST 2
 
 // Define Values
 #define PULSEWIDTH 1 // set in milliseconds
@@ -131,7 +132,8 @@
   #define WHISTLE_OFF digitalWrite(WHISTLE_PIN, LOW) // turn the whistle off
 
   // ENCODER BIT READER
-  #define READ_B bitRead(PORTD, enc_ch_b) // check the logical state of encoder channel B
+ // #define READ_B bitRead(PORTD, ENCODER_B) // check the logical state of encoder channel B
+ #define READ_B digitalRead(ENCODER_B) 
 
   // STEPPER STUFF
   #define DISABLE_FLOW_CONTROLLER digitalWrite(MOTOR_ENABLE, HIGH) // diable the stepper motor to allow manual adjustment
@@ -139,7 +141,7 @@
 
 // Global variables
 unsigned long timeNow = 0; // this should take several days before running over
-int engineState = ERROR; // state the engine micro controller is operating in
+int engineState = SELF_TEST; // state the engine micro controller is operating in
 unsigned long period = 500; // the period for the steper motor pulse
 unsigned long pulseTimer = 0; // the timer to check the stepper motor pulse
 int valveStepCount = 0; // the number of steps from home the valve stepper is
@@ -164,7 +166,7 @@ int error_message_control = 0;
 int deadZone = 100;
 // How many steps before the deadzones should the cylinder
 // epand for?
-int expandZone = 600;
+int expandZone = 300;
 int currentExpand = 0; 
 int admitime = 0;
 // whistle stuff
@@ -235,9 +237,6 @@ void setup() {
       // controlling the timing of the valve.
   attachInterrupt(digitalPinToInterrupt(ENCODER_Z), enc_ch_z, RISING);
   pinMode(ENCODER_B, INPUT); // used in checking the dirction of turn of the engine. 
-
-
-  delay(5000); // please delete me
 } // END OF SET UP LOOP
 
 // temporary variable so that the controller 
@@ -276,6 +275,15 @@ void loop() { // start of main loop
       // if c is a newline, run the command, then reset
       // run the command 
       switch(serialBuffer[0]) {
+      case 'P':
+        engineState = ERROR;
+        break; 
+      case 'W':
+        whistleEnabled = 1;
+        break;
+      case 'w':
+        whistleEnabled = 0;
+        break;
       case 'e': expansionEnabled = false; 
         Serial.print("OK\n");
         Serial.flush();
@@ -406,38 +414,39 @@ void loop() { // start of main loop
         whistleReverseHandler = 0;
         whistleForwardHandler = 0;
         whistleTimer = timeNow;
-      } else if(lastSolenoidDirection == STOP && solenoidDirection == FORWARD){
+      } 
+      if(lastSolenoidDirection == STOP && solenoidDirection == FORWARD){
         // sound the forward signal
         whistleForwardHandler = 1;
         whistleReverseHandler = 0;
         whistleStopHandler = 0;
         whistleTimer = timeNow;
-      } else if(lastSolenoidDirection == STOP && solenoidDirection == REVERSE){
+      } 
+      if(lastSolenoidDirection == STOP && solenoidDirection == REVERSE){
         // sound the reverse signal
         whistleReverseHandler = 1;
         whistleForwardHandler = 0;
         whistleStopHandler = 0;
         whistleTimer = timeNow;
       }
-      // calling the whistle functions as needed.
-      if(whistleForwardHandler == 1){
-        // call the forward whistle function
-        whistle_engine_forward();
-     } else if(whistleReverseHandler == 0){ 
-        // call the reverse whistle function
-        whistle_engine_reverse();
-     } else if(whistleStopHandler == 1){
-        // call the stop whistle handler
-        whistle_engine_stop();
+      
+    }
+
+    // calling the whistle functions as needed.
+    if(whistleForwardHandler == 1){
+      // call the forward whistle function
+      whistle_engine_forward();
+    } 
+    if(whistleReverseHandler == 1){ 
+      // call the reverse whistle function
+      whistle_engine_reverse();
+    } 
+    if(whistleStopHandler == 1){
+      // call the stop whistle handler
+      whistle_engine_stop();
     }
 
     lastSolenoidDirection = solenoidDirection;
-    
-    }
-
-
-
-
     // 
   } // END OF LISTEN STATE
 } // end of loop
@@ -699,10 +708,10 @@ void whistle_engine_forward(){
   if(delta < 1000){
     // on for 1 second
     WHISTLE_ON;
-  } else if(delta > 1000 && delta < 1500){
+  } else if(delta >= 1000 && delta < 1500){
     // off for 0.5 seconds
     WHISTLE_OFF;
-  } else if(delta > 1500 && delta < 2500){
+  } else if(delta >= 1500 && delta < 2500){
     // on for 1 second
     WHISTLE_ON;
   } else{
@@ -722,7 +731,7 @@ void whistle_engine_stop(){
   } else{
     // off, and reset the handler
     WHISTLE_OFF;
-    whistleStopHandler == 0;
+    whistleStopHandler = 0;
   }
 
 }
@@ -733,16 +742,16 @@ void whistle_engine_reverse(){
   if(delta < 1000){
     // on for 1 second
       WHISTLE_ON;
-  } else if(delta > 1000 && delta < 1500){
+  } else if(delta >= 1000 && delta < 1500){
     // off for 0.5 seconds
     WHISTLE_OFF;
-  } else if(delta > 1500 && delta < 2500){
+  } else if(delta >= 1500 && delta < 2500){
     // on for 1 second
     WHISTLE_ON;
-  } else if(delta > 2500 && delta < 3000){
+  } else if(delta >= 2500 && delta < 3000){
     // off for 0.5 seconds
     WHISTLE_OFF;
-  } else if(delta > 3000 && delta < 4000){
+  } else if(delta >= 3000 && delta < 4000){
     // on for 1 second
     WHISTLE_ON;
   } else{
@@ -750,4 +759,3 @@ void whistle_engine_reverse(){
     whistleReverseHandler = 0;
   }
 }
-
