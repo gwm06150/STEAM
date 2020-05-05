@@ -652,16 +652,18 @@ void valve_reverse_control(int angle, bool expansionMode)
   // Piston 1
   if(2048 < angle && angle > (2048-1024-deadZone)){
     P1_EXHAUST;
-  } else if((2048-1024-deadZone) < angle && angle > (2048-1024-deadZone-admitime)){
+  } else if((2048-1024-deadZone) <= angle && angle > (2048-1024-deadZone-admitime)){
     P1_ADMIT_FWD;
-  } else if((2048-1024-deadZone-admitime) < angle && angle > 1024){
+  } else if((2048-1024-deadZone-admitime) <= angle && angle > 1024){
     P1_EXPAND_FWD;
-  } else if(1024 < angle && angle > (1024-deadZone)){
+  } else if((1024+deadZone) < angle && angle >= (1024-deadZone)){
     P1_EXHAUST;
-  } else if((1024-deadZone) > angle && angle > (1024-deadZone-admitime)){
+  } else if((1024-deadZone) > angle && angle >= (1024-deadZone-admitime)){
     P1_ADMIT_REV;
-  } else if((1024-deadZone-admitime) < angle && angle > 0){
+  } else if((1024-deadZone-admitime) <= angle && angle > deadZone){
     P1_EXPAND_REV;
+  } else if (deadZone >= angle && angle > 0){
+    P1_EXHAUST;
   }
 
   // Piston 2
@@ -671,14 +673,15 @@ void valve_reverse_control(int angle, bool expansionMode)
     P2_ADMIT_FWD;
   } else if((2048-1024-deadZone-admitime) < phasedAngle && phasedAngle > 1024){
     P2_EXPAND_FWD;
-  } else if(1024 < phasedAngle && phasedAngle > (1024-deadZone)){
+  } else if((1024+deadZone) < phasedAngle && phasedAngle >= (1024-deadZone)){
     P2_EXHAUST;
   } else if((1024-deadZone) > phasedAngle && phasedAngle > (1024-deadZone-admitime)){
     P2_ADMIT_REV;
   } else if((1024-deadZone-admitime) < phasedAngle && phasedAngle > 0){
     P2_EXPAND_REV;
+  } else if (deadZone >= phasedAngle && phasedAngle > 0){
+    P2_EXHAUST;
   }
-
 }
 
 void calculate_rpm(void)
@@ -708,10 +711,10 @@ void whistle_engine_forward(){
   if(delta < 1000){
     // on for 1 second
     WHISTLE_ON;
-  } else if(delta >= 1000 && delta < 1500){
-    // off for 0.5 seconds
+  } else if(delta >= 1000 && delta < 1300){
+    // off for 0.3 seconds
     WHISTLE_OFF;
-  } else if(delta >= 1500 && delta < 2500){
+  } else if(delta >= 1300 && delta < 2300){
     // on for 1 second
     WHISTLE_ON;
   } else{
@@ -739,20 +742,20 @@ void whistle_engine_stop(){
 void whistle_engine_reverse(){
   int delta = 0;
   delta = timeNow - whistleTimer;
-  if(delta < 500){
-    // on for 0,5 second
+  if(delta < 300){
+    // on for 0.3s
       WHISTLE_ON;
-  } else if(delta >= 500 && delta < 1000){
-    // off for 0.5 seconds
+  } else if(delta >= 300 && delta < 500){
+    // off for 0.2s
     WHISTLE_OFF;
-  } else if(delta >= 1000 && delta < 1500){
-    // on for 0.5 second
+  } else if(delta >= 500 && delta < 800){
+    // on for 0.3s
     WHISTLE_ON;
-  } else if(delta >= 1500 && delta < 2000){
-    // off for 0.5 seconds
+  } else if(delta >= 800 && delta < 1000){
+    // off for 0.2s
     WHISTLE_OFF;
-  } else if(delta >= 2000 && delta < 2500){
-    // on for 0.5 second
+  } else if(delta >= 1000 && delta < 1300){
+    // on for 0.3s
     WHISTLE_ON;
   } else{
     WHISTLE_OFF;
