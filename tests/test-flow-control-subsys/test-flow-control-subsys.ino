@@ -157,8 +157,8 @@ volatile int angle_countA = 0; // the counter that keeps track of the angle of t
 volatile int angle_countB = 0; // the counter that keeps track of the angle of the engine B
 volatile int loop_count = 0; // counts the number of whole loops
 int test_counter = 0;
-int error_self_test_once = 0;
 int error_message_control = 0;
+bool test_running = false;
 // Angular/count padding on either side of 
 // the topdead and bottomdead center positions. 
 // (Exhaust region)
@@ -174,6 +174,9 @@ int whistleReverseHandler = 0;
 int whistleStopHandler = 0;
 int whistleEnabled = 0;
 int whistleTimer = 0;
+
+// timing variable used to home the engine 
+int solenoidTimer = 0;
 
 // How many samples do we use for finding the RPM?
 #define SPEED_SAMPLE_COUNT 3 
@@ -294,19 +297,12 @@ void loop() { // start of main loop
         break; 
       case 'K':
         if(engineState == ERROR && error_message_control == 1){
-          // Test Condition Made Section
-          if(test_counter == 0){
-            ENABLE_FLOW_CONTROLLER;
-            test_counter = 1;
-          } 
-          
-          if(test_counter == 1){
-            if (loop_count > 0) {
-              engineState = LISTEN;
-            }
-      
-             error_message_control = 0;
-            
+          test_running = true;
+
+          if(test_counter == 0) {
+            // make the valve want to close by 500 steps
+            valvePositionActual = 500;
+            valvePositionSet = 0; 
           }
         }
       case 's': solenoidDirection = STOP; // Stop engine
@@ -346,20 +342,7 @@ void loop() { // start of main loop
     }
   } // END OF SERIAL SECTION
 
-  if (engineState == ERROR){ // *** START OF SELF TEST ***
-    // Set UP and Test Engine
-    
-    // disable the stepper motor motor in the flow controller to home it.
-    if(error_self_test_once == 0){
-      // diable the flow controller and open the exhaust valves to allow the engine to spin
-      // only run this at start up
-      DISABLE_FLOW_CONTROLLER;
-      EX_SOL_2_ON;
-      EX_SOL_4_ON;
-      EX_SOL_6_ON;
-      EX_SOL_8_ON;
-      error_self_test_once = 1;
-    } 
+  if (engineState == ERROR){ // *** START OF SELF TEST ***   
 
     // Message Sender Section:
     if(test_counter == 0 && error_message_control == 0){
@@ -369,6 +352,7 @@ void loop() { // start of main loop
       Serial.print("\n");
       Serial.flush();
       error_message_control = 1;
+      test_running = false;
 
     } else if(test_counter == 1 && error_message_control == 0){
       // set the message to spin the engine
@@ -377,7 +361,36 @@ void loop() { // start of main loop
       Serial.print("\n");
       Serial.flush();
       error_message_control = 1;
+      test_running = false;
 
+    }
+
+    if(test_running) {
+      switch(test_counter) {
+        case 0:
+          // this occurs after stepping closed 500 steps 
+          if(valvePositionActual == 0) {
+            error_message_control = 0;
+            test_counter++;
+          }
+          break; 
+        case 1:
+          // run test 
+          engine_homing_procedure();
+
+          if(loop_count > 0) {
+            error_message_control = 0;
+            test_counter = 0;
+            engineState = LISTEN; 
+             
+            // we're done with our tests, so send a finalizing 
+            // K 
+            Serial.print("K");
+            Serial.print("\n");
+            Serial.flush();
+          }
+          break; 
+      }
     }
 
   } // END OF SELF TEST STATE
@@ -780,7 +793,7 @@ void whistle_engine_reverse(){
   }
 }
 
-void solenoidValveTiming(){
+void engine_homing_procedure(){
   // McGuinness, John J.
   if(solenoidState == 0 && ((timeNow - solenoidTimer) >= VALVESWITCHTIME)){
     // start by firing solenoid 1
