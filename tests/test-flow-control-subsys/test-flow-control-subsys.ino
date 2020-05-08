@@ -175,8 +175,6 @@ int whistleStopHandler = 0;
 int whistleEnabled = 0;
 int whistleTimer = 0;
 
-// timing variable used to home the engine 
-int solenoidTimer = 0;
 
 // How many samples do we use for finding the RPM?
 #define SPEED_SAMPLE_COUNT 3 
