@@ -13,7 +13,6 @@
   #define PIN_STEP 49 // pin to step flow controller servo
   #define MOTOR_ENABLE 51 // pin to controll enable/disable for stepper in flow controller
 
-  
   // Solenoids
   #define SOL_8 31 
   #define SOL_7 33 
@@ -62,6 +61,8 @@
   #define EX_SOL_6_OFF digitalWrite(SOL_6, LOW); // sixth solenoid close
   #define IN_SOL_7_OFF digitalWrite(SOL_7, LOW); // seventh solenoid close
   #define EX_SOL_8_OFF digitalWrite(SOL_8, LOW); // eigth solenoid close
+
+  // Solenoid Macros
   #define P1_ADMIT_FWD {\
   IN_SOL_1_ON;  \
   EX_SOL_2_OFF; \
@@ -91,8 +92,6 @@
   EX_SOL_2_ON;\
   IN_SOL_3_OFF; \
   EX_SOL_4_OFF; }
-
-
 
   #define P2_ADMIT_FWD { \
   IN_SOL_5_ON;  \
@@ -541,7 +540,6 @@ void enc_ch_b(){
   angle_countB++;
 }
 
-
 void enc_ch_z(){
   static int b = 0;
   unsigned long now = millis();
@@ -655,13 +653,21 @@ void valve_reverse_control(int angle, bool expansionMode)
   } else if((2048-1024-deadZone) <= angle && angle > (2048-1024-deadZone-admitime)){
     P1_ADMIT_FWD;
   } else if((2048-1024-deadZone-admitime) <= angle && angle > 1024){
-    P1_EXPAND_FWD;
+    if(expansionMode){
+      P1_EXPAND_FWD;
+    } else{
+      P1_ADMIT_FWD
+    }
   } else if((1024+deadZone) < angle && angle >= (1024-deadZone)){
     P1_EXHAUST;
   } else if((1024-deadZone) > angle && angle >= (1024-deadZone-admitime)){
     P1_ADMIT_REV;
   } else if((1024-deadZone-admitime) <= angle && angle > deadZone){
-    P1_EXPAND_REV;
+    if(expansionMode){
+      P1_EXPAND_REV;
+    } else{
+      P1_ADMIT_REV;
+    }
   } else if (deadZone >= angle && angle > 0){
     P1_EXHAUST;
   }
@@ -672,13 +678,21 @@ void valve_reverse_control(int angle, bool expansionMode)
   } else if((2048-1024-deadZone) < phasedAngle && phasedAngle > (2048-1024-deadZone-admitime)){
     P2_ADMIT_FWD;
   } else if((2048-1024-deadZone-admitime) < phasedAngle && phasedAngle > 1024){
-    P2_EXPAND_FWD;
+    if(expansionMode){
+      P2_EXPAND_FWD;
+    } else{
+      P2_ADMIT_FWD
+    }
   } else if((1024+deadZone) < phasedAngle && phasedAngle >= (1024-deadZone)){
     P2_EXHAUST;
   } else if((1024-deadZone) > phasedAngle && phasedAngle > (1024-deadZone-admitime)){
     P2_ADMIT_REV;
   } else if((1024-deadZone-admitime) < phasedAngle && phasedAngle > 0){
-    P2_EXPAND_REV;
+      if(expansionMode){
+       P2_EXPAND_REV;
+      } else{
+       P2_ADMIT_REV;
+      }
   } else if (deadZone >= phasedAngle && phasedAngle > 0){
     P2_EXHAUST;
   }
@@ -723,7 +737,6 @@ void whistle_engine_forward(){
   }
   
 }
-
 
 void whistle_engine_stop(){
   int delta = 0;
