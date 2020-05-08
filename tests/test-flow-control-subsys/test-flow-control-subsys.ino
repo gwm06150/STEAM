@@ -199,6 +199,7 @@ void calculate_rpm();
 
 void valve_reverse_control(int angle, bool expansion);
 void valve_forward_control(int angle, bool expansion);
+void solenoidValveTiming();
 
 void whistle_engine_forward();
 void whistle_engine_reverse();
@@ -376,6 +377,7 @@ void loop() { // start of main loop
       Serial.print("\n");
       Serial.flush();
       error_message_control = 1;
+
     }
 
   } // END OF SELF TEST STATE
@@ -570,8 +572,7 @@ void enc_ch_z(){
 
 } // END OF ENC_CH_Z
 
-void valve_forward_control(int angle, bool expansionMode) 
-{
+void valve_forward_control(int angle, bool expansionMode) {
   // Valve Timing Function 
   // 'angle': the current angle in steps, 0-2048
   // 'expansionMode': should we try to expand to maximize efficiency? (temp, experimental)
@@ -605,6 +606,8 @@ void valve_forward_control(int angle, bool expansionMode)
     } else {
       P1_ADMIT_REV;
     }
+  } else if(angle > 2048-deadZone && angle < 2048) {
+    P1_EXHAUST;
   }
 
   // Piston 2 Timings
@@ -635,34 +638,36 @@ void valve_forward_control(int angle, bool expansionMode)
     } else {
       P2_ADMIT_REV;
     }
+  } else if(phasedAngle > 2048-deadZone && phasedAngle < 2048) {
+    P2_EXHAUST;
   }
 }
 
-void valve_reverse_control(int angle, bool expansionMode)
-{ 
+void valve_reverse_control(int angle, bool expansionMode){ 
   // calulate the admission time (This makes thing easier for John)
-  admitime = 1024 - deadZone - currentExpand;
+  admitime = 1024 - (deadZone*2) - currentExpand;
 
   // Angle Phasing and Wrapping for Piston 2
   int phasedAngle = angle - 512; // 90 degrees lead
   if(phasedAngle < 0) phasedAngle += 2048; // wrap value if over 2048
+  //if(phasedAngle > 2048) phasedAngle -= 2048;
 
   // Piston 1
-  if(2048 < angle && angle > (2048-1024-deadZone)){
+  if(2048 >= angle && angle > (2048-deadZone)){
     P1_EXHAUST;
-  } else if((2048-1024-deadZone) <= angle && angle > (2048-1024-deadZone-admitime)){
+  } else if((2048-deadZone) >= angle && angle > (2048-deadZone-admitime)){
     P1_ADMIT_FWD;
-  } else if((2048-1024-deadZone-admitime) <= angle && angle > 1024){
+  } else if((2048-deadZone-admitime) >= angle && angle > (1024+deadZone)){
     if(expansionMode){
       P1_EXPAND_FWD;
     } else{
       P1_ADMIT_FWD
     }
-  } else if((1024+deadZone) < angle && angle >= (1024-deadZone)){
+  } else if((1024+deadZone) >= angle && angle > (1024-deadZone)){
     P1_EXHAUST;
-  } else if((1024-deadZone) > angle && angle >= (1024-deadZone-admitime)){
+  } else if((1024-deadZone) >= angle && angle > (1024-deadZone-admitime)){
     P1_ADMIT_REV;
-  } else if((1024-deadZone-admitime) <= angle && angle > deadZone){
+  } else if((1024-deadZone-admitime) >= angle && angle > deadZone){
     if(expansionMode){
       P1_EXPAND_REV;
     } else{
@@ -673,33 +678,32 @@ void valve_reverse_control(int angle, bool expansionMode)
   }
 
   // Piston 2
-    if(2048 < phasedAngle && phasedAngle > (2048-1024-deadZone)){
+  if(2048 >= phasedAngle && phasedAngle > (2048-deadZone)){
     P2_EXHAUST;
-  } else if((2048-1024-deadZone) < phasedAngle && phasedAngle > (2048-1024-deadZone-admitime)){
+  } else if((2048-deadZone) >= phasedAngle && phasedAngle > (2048-deadZone-admitime)){
     P2_ADMIT_FWD;
-  } else if((2048-1024-deadZone-admitime) < phasedAngle && phasedAngle > 1024){
+  } else if((2048-deadZone-admitime) >= phasedAngle && phasedAngle > (1024+deadZone)){
     if(expansionMode){
       P2_EXPAND_FWD;
     } else{
       P2_ADMIT_FWD
     }
-  } else if((1024+deadZone) < phasedAngle && phasedAngle >= (1024-deadZone)){
+  } else if((1024+deadZone) >= phasedAngle && phasedAngle > (1024-deadZone)){
     P2_EXHAUST;
-  } else if((1024-deadZone) > phasedAngle && phasedAngle > (1024-deadZone-admitime)){
+  } else if((1024-deadZone) >= phasedAngle && phasedAngle > (1024-deadZone-admitime)){
     P2_ADMIT_REV;
-  } else if((1024-deadZone-admitime) < phasedAngle && phasedAngle > 0){
-      if(expansionMode){
-       P2_EXPAND_REV;
-      } else{
-       P2_ADMIT_REV;
-      }
+  } else if((1024-deadZone-admitime) >= phasedAngle && phasedAngle > deadZone){
+    if(expansionMode){
+      P2_EXPAND_REV;
+    } else{
+      P2_ADMIT_REV;
+    }
   } else if (deadZone >= phasedAngle && phasedAngle > 0){
     P2_EXHAUST;
   }
 }
 
-void calculate_rpm(void)
-{
+void calculate_rpm(void){
   // take the average of the speed samples 
   unsigned long sum = 0;
   for(int i = 0; i < SPEED_SAMPLE_COUNT; i++) 
@@ -775,3 +779,32 @@ void whistle_engine_reverse(){
     whistleReverseHandler = 0;
   }
 }
+
+void solenoidValveTiming(){
+  // McGuinness, John J.
+  if(solenoidState == 0 && ((timeNow - solenoidTimer) >= VALVESWITCHTIME)){
+    // start by firing solenoid 1
+    digitalWrite(SOL_1, HIGH);
+    digitalWrite(SOL_2, LOW);
+    digitalWrite(SOL_3, LOW);
+    digitalWrite(SOL_4, HIGH);
+    
+    // update the solenoid timer
+    solenoidTimer = timeNow;
+
+    // update the solenoid state
+    solenoidState = 1;
+  } else if(solenoidState == 1 && ((timeNow - solenoidTimer) >= VALVESWITCHTIME)){
+    // start by firing solenoid 1
+    digitalWrite(SOL_1, LOW);
+    digitalWrite(SOL_2, HIGH);
+    digitalWrite(SOL_3, HIGH);
+    digitalWrite(SOL_4, LOW);
+
+    // update the solenoid timer
+    solenoidTimer = timeNow;
+
+    // update the solenoid state
+    solenoidState = 0;
+  }
+} // END OF SOLENOID VALVE TIMING
