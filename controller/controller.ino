@@ -70,6 +70,7 @@ void loop()
   unsigned char buttons = 0;
 
   // manages serial 
+  
   if(Serial.available() > 0){
     char c = Serial.read();
 
@@ -77,6 +78,7 @@ void loop()
       serialBuffer[serialIndex] = c;
       serialIndex++;
     } else {
+      
       if(serialBuffer[0] == 'O' && serialBuffer[1] == 'K') {
         set_display_rgb(255,255,255);
         delay(50);
@@ -129,6 +131,11 @@ void loop()
 
               menuState = MENU_DEBUG;
               nextMenuState = MENU_ERROR;
+            }
+            break;
+          case 'K':
+            if(menuState == MENU_ERROR) {
+              nextMenuState = MENU_SELECT_MODE;
             }
             break;
         }
@@ -260,7 +267,6 @@ void loop()
   if(check_encoder_pushbutton()) {
     switch(menuState){ 
     case MENU_ERROR: 
-      nextMenuState = MENU_SELECT_MODE;
       send_ok();
       break; 
     case MENU_DEBUG:
