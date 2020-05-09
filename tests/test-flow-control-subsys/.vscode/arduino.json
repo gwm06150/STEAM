@@ -1,0 +1,6 @@
+{
+    "port": "COM4",
+    "board": "arduino:avr:mega",
+    "sketch": "test-flow-control-subsys.ino",
+    "configuration": "cpu=atmega2560"
+}

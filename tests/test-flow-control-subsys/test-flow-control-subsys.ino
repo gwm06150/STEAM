@@ -295,12 +295,21 @@ void loop() { // start of main loop
         break; 
       case 'K':
         if(engineState == ERROR && error_message_control == 1){
-          test_running = true;
+          if(!test_running) {
+            test_running = true;
 
-          if(test_counter == 0) {
-            // make the valve want to close by 500 steps
-            valvePositionActual = 500;
-            valvePositionSet = 0; 
+            if(test_counter == 0) {
+              // make the valve want to close by 500 steps
+              valveStepCount = 5000;
+              valvePositionSet = 0; 
+
+              ENABLE_FLOW_CONTROLLER;
+            }
+
+            if(test_counter == 1){
+              solenoidTimer = timeNow;
+              valvePositionSet = 800;
+            }
           }
         }
       case 's': solenoidDirection = STOP; // Stop engine
@@ -364,10 +373,23 @@ void loop() { // start of main loop
     }
 
     if(test_running) {
+  
+      // call the appropriate step direction for the flow controller
+      if(valvePositionSet > valveStepCount){
+        // Open the valve to the set point
+        stepFlowValveOpen();
+      } else if(valvePositionSet < valveStepCount){
+        // Close the valve to the set point
+        stepFlowValveClosed();
+      } else if(valvePositionSet == valveStepCount){
+        // Do nothing
+      }
+
       switch(test_counter) {
         case 0:
+          
           // this occurs after stepping closed 500 steps 
-          if(valvePositionActual == 0) {
+          if(valveStepCount == 0) {
             error_message_control = 0;
             test_counter++;
           }
@@ -792,30 +814,21 @@ void whistle_engine_reverse(){
 }
 
 void engine_homing_procedure(){
-  // McGuinness, John J.
-  if(solenoidState == 0 && ((timeNow - solenoidTimer) >= VALVESWITCHTIME)){
-    // start by firing solenoid 1
-    digitalWrite(SOL_1, HIGH);
-    digitalWrite(SOL_2, LOW);
-    digitalWrite(SOL_3, LOW);
-    digitalWrite(SOL_4, HIGH);
-    
-    // update the solenoid timer
+  int time = timeNow - solenoidTimer; 
+
+  if(time < 1000) {
+    P1_ADMIT_FWD;
+    P2_EXHAUST;
+  } else if(time < 2000) {
+    P2_ADMIT_FWD;
+    P1_EXHAUST;
+  } else if(time < 3000) {
+    P1_ADMIT_REV;
+    P2_EXHAUST;
+  } else if(time < 4000) {
+    P2_ADMIT_REV;
+    P1_EXHAUST;
+  } else if(time < 5000) {
     solenoidTimer = timeNow;
-
-    // update the solenoid state
-    solenoidState = 1;
-  } else if(solenoidState == 1 && ((timeNow - solenoidTimer) >= VALVESWITCHTIME)){
-    // start by firing solenoid 1
-    digitalWrite(SOL_1, LOW);
-    digitalWrite(SOL_2, HIGH);
-    digitalWrite(SOL_3, HIGH);
-    digitalWrite(SOL_4, LOW);
-
-    // update the solenoid timer
-    solenoidTimer = timeNow;
-
-    // update the solenoid state
-    solenoidState = 0;
   }
 } // END OF SOLENOID VALVE TIMING
