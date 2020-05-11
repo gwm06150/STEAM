@@ -5,7 +5,8 @@
 
 #include <string.h>
 
-#define MAX_FLOW_SET 500
+#define MAX_FLOW_SET  150
+#define MIN_FLOW_SET   20
 #define MAX_ERROR_MSG 14
 
 static unsigned int menuState = MENU_UNINITIALIZED;
@@ -172,30 +173,9 @@ void loop()
       break;
     case MENU_SETSPEED_VVT:
       display_clear();
-      display_write("Cur:    RPM VVT", 0, 0);
-      display_write("Set:    ", 0, 1);
-      
-
-
-      switch(speedMode) {
-      case SPEED_FORWARD: 
-        display_write("FWD", 12, 1);
-        break;
-      case SPEED_REVERSE:
-        display_write("REV", 12, 1);
-        break;
-      case SPEED_STOPPED: 
-        display_write("STP", 12, 1);
-        break;
-      }
-
-      {
-        char speed[4] = "";
-        
-        itoa(speedSetting, speed, 10);
-        display_write("   ", 5, 1);
-        display_write(speed, 5, 1);
-      }
+      display_write("Sorry, N/A.", 0, 0);
+      display_write("Press any button", 0, 1);
+    
 
       break;
     case MENU_SETSPEED_VFC: 
@@ -245,8 +225,9 @@ void loop()
         }
         break;
 
-      case MENU_SETSPEED_VFC:
       case MENU_SETSPEED_VVT: 
+        break; 
+      case MENU_SETSPEED_VFC:
         switch(speedMode) {
         case SPEED_FORWARD:
         case SPEED_REVERSE: 
@@ -276,8 +257,9 @@ void loop()
       testColor++;
       if(testColor == 3) testColor = 0;
       break;
-    case MENU_SETSPEED_VFC: 
     case MENU_SETSPEED_VVT: 
+      break; 
+    case MENU_SETSPEED_VFC: 
 
       send_speed_cmd(speedSetting);
 
@@ -289,8 +271,9 @@ void loop()
   // check if encoder has stepped 
   if(check_encoder_moved()) {
     switch(menuState) {
-    case MENU_SETSPEED_VFC:
     case MENU_SETSPEED_VVT:
+      break;
+    case MENU_SETSPEED_VFC:
       if(encoder_going_cw()) {
         
         if(speedSetting+5 > MAX_FLOW_SET)
@@ -298,8 +281,8 @@ void loop()
         else 
           speedSetting+=5;
       } else {
-        if(speedSetting-5 < 0) 
-          speedSetting = 0;
+        if(speedSetting-5 < MIN_FLOW_SET) 
+          speedSetting = MIN_FLOW_SET;
         else
           speedSetting-=5;
       }
@@ -360,8 +343,10 @@ void loop()
         nextMenuState = MENU_SETSPEED_VVT;
         break;
 
-      case MENU_SETSPEED_VFC: 
       case MENU_SETSPEED_VVT: 
+        nextMenuState = MENU_SELECT_MODE; 
+        break; 
+      case MENU_SETSPEED_VFC:       
         if(speedMode == SPEED_FORWARD)
           speedMode = SPEED_STOPPED;
         else 
@@ -388,8 +373,10 @@ void loop()
           
         break;
 
-      case MENU_SETSPEED_VFC:
       case MENU_SETSPEED_VVT:
+        nextMenuState = MENU_SELECT_MODE; 
+        break; 
+      case MENU_SETSPEED_VFC:
         if(speedMode == SPEED_STOPPED)
           nextMenuState = MENU_SELECT_MODE;
         else 
@@ -410,8 +397,10 @@ void loop()
         nextMenuState = MENU_SETSPEED_VFC;
         break;
       
-      case MENU_SETSPEED_VFC: 
       case MENU_SETSPEED_VVT: 
+        nextMenuState = MENU_SELECT_MODE; 
+        break;
+      case MENU_SETSPEED_VFC: 
         if(speedMode == SPEED_REVERSE)
           speedMode = SPEED_STOPPED;
         else 
@@ -421,8 +410,9 @@ void loop()
     }
 
     switch(menuState) {
-      case MENU_SETSPEED_VFC: 
       case MENU_SETSPEED_VVT: 
+        break; 
+      case MENU_SETSPEED_VFC: 
         switch(speedMode) {
         case SPEED_FORWARD: 
           display_write("FWD", 12, 1);
