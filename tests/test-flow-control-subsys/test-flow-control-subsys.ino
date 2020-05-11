@@ -176,6 +176,9 @@ int whistleEnabled = 0;
 int whistleTimer = 0;
 
 
+int targetRPM = 0;
+unsigned long nextControlCalc = 0;
+
 // How many samples do we use for finding the RPM?
 #define SPEED_SAMPLE_COUNT 3 
 unsigned long speedSamples[SPEED_SAMPLE_COUNT]; 
@@ -185,7 +188,7 @@ int measuredRPM = 0;
 // periodically (since it is an expensive calculation)
 unsigned long nextRpmReadout = 0;
 // Send an RPM readout every second
-#define TIME_BETWEEN_READOUTS 1000
+#define TIME_BETWEEN_READOUTS 40
 
 
 
@@ -246,7 +249,7 @@ void setup() {
 bool expansionEnabled = false; 
 
 void loop() { // start of main loop
-
+  unsigned long lastTime = timeNow;
   // Update Time at start of Loop
   timeNow = millis();
 
@@ -328,7 +331,8 @@ void loop() { // start of main loop
 
             sprintf(buffer, "OK%d\n", conversion); // confirm the command. 
 
-            valvePositionSet = 10 * conversion; // scales input value
+            //valvePositionSet = 10 * conversion; // scales input value
+            targetRPM = conversion;
             Serial.print(buffer);
 
           } else {
@@ -481,7 +485,13 @@ void loop() { // start of main loop
     }
 
     lastSolenoidDirection = solenoidDirection;
-    // 
+    
+
+    if(timeNow > nextControlCalc) {
+      flow_control(timeNow - lastTime);
+      nextControlCalc = timeNow + 5;
+    }
+
   } // END OF LISTEN STATE
 } // end of loop
 
@@ -546,6 +556,22 @@ void stepFlowValveOpen(){
     }
   }
 } // END OF FLOW VALVE OPEN
+
+
+const int Kp = 100;
+const int Ki = 1;
+int accumulate = 0;
+void flow_control(unsigned long dt) 
+{
+  int error = targetRPM - measuredRPM;
+
+  valvePositionSet = Kp*(targetRPM + error);
+
+  if(valvePositionSet > 2000)
+    valvePositionSet = 2000;
+  else if(valvePositionSet < 0)
+    valvePositionSet = 0;
+}
 
 void enc_ch_a(){
   // McGuinnes, John J.
