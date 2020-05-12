@@ -180,17 +180,17 @@ int targetRPM = 0;
 unsigned long nextControlCalc = 0;
 
 // How many samples do we use for finding the RPM?
-#define SPEED_SAMPLE_COUNT 3 
+#define SPEED_SAMPLE_COUNT 8
 unsigned long speedSamples[SPEED_SAMPLE_COUNT]; 
 unsigned long lastSample = 0;
 int measuredRPM = 0; 
 // timing variable to only send RPM 
 // periodically (since it is an expensive calculation)
 unsigned long nextRpmReadout = 0;
+unsigned long nextRpmCalc = 0;
 // Send an RPM readout every second
-#define TIME_BETWEEN_READOUTS 40
-
-
+#define TIME_BETWEEN_READOUTS 1000
+#define TIME_BETWEEN_RPM_CALC 50
 
 // Function Prototypes
 // See functions for descriptions of functions
@@ -246,26 +246,13 @@ void setup() {
 // temporary variable so that the controller 
 // can enable and disable experimental expansion 
 // timing 
-bool expansionEnabled = false; 
+bool expansionEnabled = true; 
 
 void loop() { // start of main loop
   unsigned long lastTime = timeNow;
   // Update Time at start of Loop
   timeNow = millis();
 
-  // calculate the RPM of engine and update
-  if(timeNow > nextRpmReadout) {
-    char buffer[6] = "";
-    // reset timer 
-    nextRpmReadout = timeNow + TIME_BETWEEN_READOUTS;
-    // recalculate RPM 
-    calculate_rpm();
-    // put rpm into S code message 
-    sprintf(buffer, "S%d\n", measuredRPM);
-    // send readout to controller 
-    Serial.print(buffer);
-    Serial.flush();
-  }
 
   while(Serial.available() > 0) { // *** START OF SERIAL SECTION ***
     // Read input from serial and set valves as needed
@@ -317,6 +304,10 @@ void loop() { // start of main loop
         }
       case 's': solenoidDirection = STOP; // Stop engine
         currentExpand = 0;
+        measuredRPM = 0;
+        for(int i = 0; i < SPEED_SAMPLE_COUNT; i++)
+          speedSamples[i] = 0;
+
         break; 
       case 'f': solenoidDirection = FORWARD; // Forward engine
         break; 
@@ -485,11 +476,31 @@ void loop() { // start of main loop
     }
 
     lastSolenoidDirection = solenoidDirection;
-    
+      
+      
+    // calculate the RPM of engine and update
+    if(timeNow > nextRpmCalc){
+      // reset timer 
+      nextRpmCalc = timeNow + TIME_BETWEEN_RPM_CALC;
+      // recalculate RPM 
+      calculate_rpm();
+    }
+
+    if(timeNow > nextRpmReadout) {
+      char buffer[6] = "";
+
+      nextRpmReadout = timeNow + TIME_BETWEEN_READOUTS;
+      // put rpm into S code message 
+      sprintf(buffer, "S%d\n", measuredRPM);
+      // send readout to controller 
+      Serial.print(buffer);
+      Serial.flush();
+    }
 
     if(timeNow > nextControlCalc) {
+      //valvePositionSet = 10 * targetRPM;
       flow_control(timeNow - lastTime);
-      nextControlCalc = timeNow + 5;
+      nextControlCalc = timeNow + 50;
     }
 
   } // END OF LISTEN STATE
@@ -558,14 +569,18 @@ void stepFlowValveOpen(){
 } // END OF FLOW VALVE OPEN
 
 
-const int Kp = 100;
+const int Kp = 50;
 const int Ki = 1;
 int accumulate = 0;
 void flow_control(unsigned long dt) 
 {
   int error = targetRPM - measuredRPM;
 
-  valvePositionSet = Kp*(targetRPM + error);
+  //valvePositionSet = Kp*targetRPM + 10*error;
+  if(error > 0)
+    valvePositionSet+=10;
+  else if(error < 0) 
+    valvePositionSet-=10;
 
   if(valvePositionSet > 2000)
     valvePositionSet = 2000;
@@ -573,7 +588,12 @@ void flow_control(unsigned long dt)
     valvePositionSet = 0;
 }
 
+
+unsigned long lastAtime = 0;
+int special = 0;
+
 void enc_ch_a(){
+  
   // McGuinnes, John J.
   // ISR to handle encoder channel A
   // If this function has been called then channel A has encountered a rising edge. 
@@ -603,14 +623,15 @@ void enc_ch_b(){
 
 void enc_ch_z(){
   static int b = 0;
+
   unsigned long now = millis();
   for(int i = 0; i < SPEED_SAMPLE_COUNT-1; i++) {
     speedSamples[i] = speedSamples[i+1];
   }
-
-  speedSamples[SPEED_SAMPLE_COUNT-1] = now - lastSample; 
-  lastSample = now;
   
+  speedSamples[SPEED_SAMPLE_COUNT-1] = now - lastSample; 
+  lastSample = now; 
+
   if(currentExpand < expandZone)
     currentExpand += 100;
 
@@ -771,10 +792,17 @@ void calculate_rpm(void){
   sum /= SPEED_SAMPLE_COUNT; 
 
   if(sum != 0) {
-    // ms per rev * (1 sec / 1000ms) * (1 min / 60 sec)
+    // us per rev * (1 sec / 1000000ms) * (1 min / 60 sec)
     // (min per rev)^-1 = rev per min = RPM!
-    double rpm = 1.0/((((double)sum)/1000.0)*(1.0/60.0));
 
+    // (  ms / 0.2deg * (1 sec / 1000ms) * (1 min / 60 sec) * (360deg / rev) ) ^-1
+    // 0.00003
+
+    // ms per eighth.rev * (8 eight revs / rev) * (1 sec / 1000ms) * (1 min / 60 sec) 
+    //double rpm = 1.0/(0.000133* (double)sum);
+
+    double rpm = 1.0/((((double)sum)/1000.0)*(1.0/60.0));
+    
     // round and store the RPM
     measuredRPM = (int)round(rpm);
   } else {
