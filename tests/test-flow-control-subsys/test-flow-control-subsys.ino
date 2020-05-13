@@ -182,7 +182,7 @@ unsigned long nextControlCalc = 0;
 // How many samples do we use for finding the RPM?
 #define SPEED_SAMPLE_COUNT 8
 unsigned long speedSamples[SPEED_SAMPLE_COUNT]; 
-unsigned long lastSample = 0;
+int lastAngle = 0;
 int measuredRPM = 0; 
 // timing variable to only send RPM 
 // periodically (since it is an expensive calculation)
@@ -482,6 +482,14 @@ void loop() { // start of main loop
     if(timeNow > nextRpmCalc){
       // reset timer 
       nextRpmCalc = timeNow + TIME_BETWEEN_RPM_CALC;
+
+      for(int i = 0; i < SPEED_SAMPLE_COUNT-1; i++) {
+        speedSamples[i] = speedSamples[i+1];
+      }
+      
+      speedSamples[SPEED_SAMPLE_COUNT-1] = angle_countA - lastAngle; 
+      lastAngle = angle_countA;
+
       // recalculate RPM 
       calculate_rpm();
     }
@@ -624,13 +632,7 @@ void enc_ch_b(){
 void enc_ch_z(){
   static int b = 0;
 
-  unsigned long now = millis();
-  for(int i = 0; i < SPEED_SAMPLE_COUNT-1; i++) {
-    speedSamples[i] = speedSamples[i+1];
-  }
   
-  speedSamples[SPEED_SAMPLE_COUNT-1] = now - lastSample; 
-  lastSample = now; 
 
   if(currentExpand < expandZone)
     currentExpand += 100;
@@ -792,17 +794,14 @@ void calculate_rpm(void){
   sum /= SPEED_SAMPLE_COUNT; 
 
   if(sum != 0) {
-    // us per rev * (1 sec / 1000000ms) * (1 min / 60 sec)
-    // (min per rev)^-1 = rev per min = RPM!
-
-    // (  ms / 0.2deg * (1 sec / 1000ms) * (1 min / 60 sec) * (360deg / rev) ) ^-1
-    // 0.00003
-
-    // ms per eighth.rev * (8 eight revs / rev) * (1 sec / 1000ms) * (1 min / 60 sec) 
-    //double rpm = 1.0/(0.000133* (double)sum);
-
-    double rpm = 1.0/((((double)sum)/1000.0)*(1.0/60.0));
+    // avg delta steps * (1 rev / 2048 steps) 
+    //                 / dt 
+    // ms * (1 sec / 1000 ms) * (1 min / 60 sec)
+    //double rpm = 1.0/((((double)sum)/1000.0)*(1.0/60.0));
     
+
+    double rpm = ((double)sum / 2048)/(TIME_BETWEEN_RPM_CALC/60000.0);
+
     // round and store the RPM
     measuredRPM = (int)round(rpm);
   } else {
